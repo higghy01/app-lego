@@ -525,7 +525,12 @@ function renderResults(append = false) {
 
 const NEW_DAYS = 60; // un set è "Nuovo" per 60 giorni dalla data di uscita
 const RECENT_YEARS = 3; // i temi con set usciti negli ultimi anni sono quelli "di oggi"
-const NOT_BUILDING = ["Gear", "Books"]; // portachiavi, libri…: in fondo, tra gli altri temi
+// Temi che non sono categorie da negozio (gadget, libri, omaggi, negozi, scuola…): in fondo, tra gli altri temi.
+const NOT_BUILDING = ["Gear", "Books", "Promotional", "LEGO Brand Store", "Other", "Educational and Dacta", "Power Functions",
+  "Value Packs", "FIRST LEGO League", "Legoland Parks", "LEGO Exclusive", "Editions", "Bulk Bricks", "Service Packs",
+  "Key Chains", "Magnets", "Supplemental"];
+// I set normali hanno un codice di sole cifre (es. 60420-1); omaggi e confezioni speciali hanno lettere (EG00160-1, L0002220-1).
+const isShopSet = (s) => (s.shop ??= /^\d+-\d+$/.test(s.setNum));
 
 // Data di uscita da Brickset (AAAA-MM-GG); se manca si usa solo l'anno.
 function launchOf(s) {
@@ -560,7 +565,12 @@ function releaseKey(s) {
   return launchOf(s) || (s.year != null ? `${s.year}-00-00` : "0000");
 }
 
-const byRelease = (a, b) => (releaseKey(a) < releaseKey(b) ? 1 : releaseKey(a) > releaseKey(b) ? -1 : b.codeRank - a.codeRank);
+// A parità di data: prima i set normali, poi quelli con la foto della scatola, poi il codice più alto.
+const byRelease = (a, b) => {
+  const ka = releaseKey(a), kb = releaseKey(b);
+  if (ka !== kb) return ka < kb ? 1 : -1;
+  return (isShopSet(b) - isShopSet(a)) || (!!boxThumb(b) - !!boxThumb(a)) || b.codeRank - a.codeRank;
+};
 
 // Foto della scatola (Brickset) per gli elenchi, se c'è; altrimenti quella di Rebrickable.
 function boxThumb(s) {
@@ -594,11 +604,13 @@ function themeIndex() {
     if (s.year != null) {
       t.from = t.from == null ? s.year : Math.min(t.from, s.year);
       t.to = t.to == null ? s.year : Math.max(t.to, s.year);
-      if (s.year >= now - RECENT_YEARS + 1) t.recent++;
+      if (s.year >= now - RECENT_YEARS + 1 && isShopSet(s)) t.recent++; // un omaggio non rende "attuale" un tema
     }
     // Foto della casella: il set già uscito più recente che ha un'immagine.
     const out = launchOf(s) ? launchOf(s) <= today : s.year != null && s.year <= now;
-    if (out && s.img && (!t.newest || byRelease(s, t.newest) < 0)) t.newest = s;
+    // Si preferisce sempre un set normale a un omaggio, anche se l'omaggio è più recente.
+    const better = !t.newest || (isShopSet(s) !== isShopSet(t.newest) ? isShopSet(s) : byRelease(s, t.newest) < 0);
+    if (out && s.img && better) t.newest = s;
   }
   const all = [...info.values()].filter((t) => t.count);
   const main = (t) => t.recent && !NOT_BUILDING.includes(t.theme.name);

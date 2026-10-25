@@ -514,3 +514,10 @@ div.tile-img { background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www
 .desc.open { max-height: none; }
 .desc p { margin: 0 0 8px; }
 #desc-more { margin: 8px 0 6px; }
+
+/* Telefoni stretti (iPhone SE 1ª generazione): le 6 voci del menu devono starci tutte */
+@media (max-width: 359px) {
+  .tabs { padding-left: 2px; padding-right: 2px; }
+  .tabs a { font-size: 10px; min-width: 0; }
+  .tabs a span { width: 44px; }
+}
