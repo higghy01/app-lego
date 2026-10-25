@@ -526,8 +526,10 @@ function renderDetail(setNum) {
 // ---------- Scansione codice a barre ----------
 
 let scanControls = null;
+let scanGen = 0; // ogni avvio/stop cambia numero: una fotocamera avviata "in ritardo" viene subito spenta
 
 function stopScan() {
+  scanGen++;
   if (scanControls) { try { scanControls.stop(); } catch {} scanControls = null; }
 }
 
@@ -579,8 +581,10 @@ async function startScan() {
     return;
   }
   try {
-    await loadScript("vendor/zxing-browser.min.js");
     stopScan();
+    const gen = scanGen;
+    await loadScript("vendor/zxing-browser.min.js");
+    if (gen !== scanGen) return;
     const reader = new ZXingBrowser.BrowserMultiFormatReader();
     const controls = await reader.decodeFromConstraints(
       { video: { facingMode: "environment" } }, $("#cam"),
@@ -591,12 +595,13 @@ async function startScan() {
         if (navigator.vibrate) navigator.vibrate(80);
         handleCode(result.getText(), false);
       });
-    if (location.hash !== "#/scansiona") { controls.stop(); return; }
+    if (gen !== scanGen || location.hash !== "#/scansiona") { controls.stop(); return; }
     scanControls = controls;
   } catch (err) {
+    if (!$("#scan-box")) return;
     $("#scan-box").hidden = true;
     msg.textContent = err && err.name === "NotAllowedError"
-      ? "Per scansionare serve il permesso di usare la fotocamera. Puoi darlo da Impostazioni dell'iPhone, oppure scrivere il codice qui sotto."
+      ? "Per scansionare serve il permesso di usare la fotocamera: su iPhone vai in Impostazioni → Safari → Fotocamera → Consenti, poi tocca il pulsante qui sotto. Oppure scrivi il codice qui sotto."
       : "Non riesco ad avviare la fotocamera. Puoi scrivere il codice qui sotto.";
     $("#scan-start").hidden = false;
   }
@@ -608,13 +613,14 @@ async function handleCode(text, typed) {
   const digits = String(text).replace(/\D/g, "");
   let matches = [];
   let extraMissing = false;
+  let offline = false;
   // Codice a barre (8 cifre o più) cercato nei dati Brickset.
   if (digits.length >= 8) {
     try {
       const { barcodes, sets } = await loadExtra();
       extraMissing = Object.keys(sets).length === 0;
       matches = (barcodes.get(normBarcode(digits)) || []).map((n) => state.catalog.bySetNum.get(n)).filter(Boolean);
-    } catch { extraMissing = true; }
+    } catch { offline = true; }
   }
   // Numero del set (scritto a mano o letto da un QR code che lo contiene).
   if (!matches.length) {
@@ -626,14 +632,27 @@ async function handleCode(text, typed) {
     }
   }
   if (matches.length === 1) { location.hash = "#/set/" + encodeURIComponent(matches[0].setNum); return; }
+  // Fotocamera in pausa mentre si guarda il risultato.
+  stopScan();
+  if ($("#scan-box")) $("#scan-box").hidden = true;
+  if ($("#scan-msg")) $("#scan-msg").textContent = "";
+  const isText = typed && !/\d/.test(text);
   const again = `<div class="center"><button class="btn primary" id="scan-again">Scansiona un altro</button></div>`;
   if (matches.length) {
     out.innerHTML = `<div class="card"><h2>Ho trovato ${matches.length} set</h2><ul class="list">${matches.map(setItem).join("")}</ul></div>${again}`;
   } else {
     out.innerHTML = `<div class="card"><h2>Codice non trovato</h2><p class="small">Ho letto <b>${esc(text)}</b> ma non corrisponde a nessun set.
-      ${extraMissing ? "I codici a barre non sono ancora stati scaricati da Brickset: per ora cerca con il numero del set." : "Prova a scrivere il numero del set che trovi sulla scatola (di solito in alto, es. 10294)."}</p></div>${again}`;
+      ${isText ? `Qui si cercano solo numeri. Per cercare per nome usa la scheda <a href="#/catalogo">Catalogo</a>.`
+        : offline ? "Per riconoscere i codici a barre la prima volta serve internet. Riprova quando sei connessa, oppure scrivi il numero del set."
+        : extraMissing ? "I codici a barre non sono ancora stati scaricati da Brickset: per ora cerca con il numero del set."
+        : "Prova a scrivere il numero del set che trovi sulla scatola (di solito in alto, es. 10294)."}</p></div>${again}`;
   }
-  $("#scan-again").addEventListener("click", () => { out.innerHTML = ""; $("#scan-box").hidden = false; startScan(); });
+  $("#scan-again").addEventListener("click", () => {
+    out.innerHTML = "";
+    $("#scan-box").hidden = false;
+    $("#scan-msg").textContent = "Inquadra il codice a barre sulla scatola.";
+    startScan();
+  });
 }
 
 function collectionList(filter) {

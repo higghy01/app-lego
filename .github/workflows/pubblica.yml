@@ -32,7 +32,8 @@ jobs:
         env:
           BRICKSET_API_KEY: ${{ secrets.BRICKSET_API_KEY }}
         run: |
-          python scripts/fetch_brickset.py --max-calls 60
+          # Anche se Brickset si ferma (es. limite giornaliero), quanto scaricato si salva.
+          python scripts/fetch_brickset.py --max-calls 60 || echo "::warning title=Brickset::aggiornamento incompleto, riprovo domani"
           if [ -n "$(git status --porcelain data-src)" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
