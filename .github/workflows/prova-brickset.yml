@@ -1,0 +1,15 @@
+name: Prova dati Brickset (temporanea)
+on:
+  push:
+    branches: [claude/project-thread-o7rkh2]
+jobs:
+  prova:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - env:
+          BRICKSET_API_KEY: ${{ secrets.BRICKSET_API_KEY }}
+        run: python scripts/prova_brickset.py
