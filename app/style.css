@@ -106,7 +106,7 @@ textarea { min-height: 90px; resize: vertical; }
   border-radius: 6px; padding: 2px 6px; margin-top: 4px;
 }
 
-.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 6px; -webkit-overflow-scrolling: touch; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .chip {
   flex: none; border: 1px solid var(--line); background: var(--card); border-radius: 999px;
   padding: 6px 12px; font-size: 14px; cursor: pointer;
@@ -136,6 +136,7 @@ dl.data dd { margin: 0; font-size: 15px; }
 .figs li { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); font-size: 14px; }
 .figs li:first-child { border-top: 0; }
 .figs img { width: 44px; height: 44px; object-fit: contain; background: #fff; border-radius: 6px; flex: none; }
+.warn { background: #fff4cc; color: #3d3000; border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-bottom: 12px; }
 .empty { text-align: center; color: var(--muted); padding: 40px 10px; }
 .empty b { display: block; font-size: 17px; color: var(--text); margin-bottom: 6px; }
 .more { margin: 8px 0 20px; }

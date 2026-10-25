@@ -43,6 +43,20 @@ function debounce(fn, ms) {
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
+// Data di oggi secondo l'ora del telefono (non quella di Greenwich).
+function todayLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function isIosBrowser() {
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+  return ios && !standalone;
+}
+
+const SAFARI_WARNING = `<div class="warn">Stai usando Safari: i set che segni qui restano solo in Safari e potrebbero essere cancellati. Prima installa l'app (Condividi → Aggiungi alla schermata Home) e usa quella.</div>`;
+
 function imgUrl(path, base) {
   if (!path) return "";
   return /^https?:/.test(path) ? path : base + path;
@@ -76,7 +90,13 @@ function loadCollection() {
 }
 
 function saveCollection() {
-  localStorage.setItem(STORE_KEY, JSON.stringify(state.collection));
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(state.collection));
+    return true;
+  } catch (err) {
+    alert("Attenzione: non sono riuscito a salvare la modifica (memoria del telefono piena?). Fai un backup e libera spazio.");
+    return false;
+  }
 }
 
 function entry(setNum) {
@@ -87,7 +107,7 @@ function updateEntry(setNum, changes) {
   const e = { ...entry(setNum), ...changes, u: new Date().toISOString() };
   if (e.s === "none" && !e.f && !e.n && !e.d) delete state.collection[setNum];
   else state.collection[setNum] = e;
-  saveCollection();
+  return saveCollection();
 }
 
 // ---------- Catalogo ----------
@@ -299,6 +319,7 @@ function renderDetail(setNum) {
 
     <div class="card" style="margin-top:14px">
       <h2>La mia collezione</h2>
+      ${isIosBrowser() ? SAFARI_WARNING : ""}
       <div class="status-grid">
         ${STATUSES.map((st) => `<button class="status-btn ${e.s === st.id ? "on st-" + st.id : ""}" data-status="${st.id}">${esc(st.label)}</button>`).join("")}
       </div>
@@ -345,19 +366,30 @@ function renderDetail(setNum) {
   document.querySelectorAll(".status-btn").forEach((btn) => btn.addEventListener("click", () => {
     const st = btn.dataset.status;
     const changes = { s: st };
-    if (st === "built" && !entry(setNum).d) changes.d = new Date().toISOString().slice(0, 10);
-    updateEntry(setNum, changes);
+    if (st === "built" && !entry(setNum).d) changes.d = todayLocal();
+    if (st === "none") changes.d = undefined;
+    const ok = updateEntry(setNum, changes);
     document.querySelectorAll(".status-btn").forEach((b) => { b.className = "status-btn" + (b.dataset.status === st ? " on st-" + st : ""); });
     const cur = entry(setNum);
     $("#date-field").hidden = !(st === "built" || st === "apart" || cur.d);
     $("#built-date").value = cur.d || "";
-    flash();
+    if (ok) flash();
   }));
-  $("#built-date").addEventListener("change", (ev) => { updateEntry(setNum, { d: ev.target.value || undefined }); flash(); });
-  $("#notes").addEventListener("input", debounce((ev) => { updateEntry(setNum, { n: ev.target.value.trim() ? ev.target.value : undefined }); flash(); }, 400));
+  $("#built-date").addEventListener("change", (ev) => { if (updateEntry(setNum, { d: ev.target.value || undefined })) flash(); });
+  // Le note si salvano mentre si scrive, quando si esce dal campo e se l'app viene chiusa.
+  const notes = $("#notes");
+  const saveNotes = () => {
+    pendingSave = null;
+    const n = notes.value.trim() ? notes.value : undefined;
+    if ((entry(setNum).n || undefined) === n) return;
+    if (updateEntry(setNum, { n })) flash();
+  };
+  const saveNotesLater = debounce(() => { if (pendingSave) saveNotes(); }, 400);
+  notes.addEventListener("input", () => { pendingSave = saveNotes; saveNotesLater(); });
+  notes.addEventListener("blur", () => { if (pendingSave) saveNotes(); });
   $("#fav").addEventListener("click", (ev) => {
     const f = !entry(setNum).f;
-    updateEntry(setNum, { f: f || undefined });
+    if (!updateEntry(setNum, { f: f || undefined })) return;
     ev.target.textContent = f ? "❤️ Nei preferiti" : "🤍 Aggiungi ai preferiti";
     flash();
   });
@@ -396,11 +428,12 @@ function renderCollection() {
     ["built", "Costruiti", (e) => e.s === "built"],
     ["apart", "Smontati", (e) => e.s === "apart"],
     ["fav", "Preferiti ❤️", (e) => e.f],
+    ["notes", "Con note", (e) => e.n],
   ];
   const draw = () => {
     const [, , filter] = chips.find((c) => c[0] === state.collectionChip) || chips[0];
     const list = collectionList(filter);
-    $("#view").innerHTML = `
+    $("#view").innerHTML = `${isIosBrowser() ? SAFARI_WARNING : ""}
       <div class="chips">${chips.map(([id, label, fn]) =>
         `<button class="chip ${id === state.collectionChip ? "on" : ""}" data-chip="${id}">${esc(label)} (${collectionList(fn).length})</button>`).join("")}</div>
       ${list.length ? `<ul class="list">${list.map(setItem).join("")}</ul>` :
@@ -490,7 +523,13 @@ async function importBackup(ev) {
 // ---------- Navigazione ----------
 
 let currentRoute = "";
+let pendingSave = null;
+const flushPending = () => { if (pendingSave) pendingSave(); };
+window.addEventListener("pagehide", flushPending);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushPending(); });
+
 function route() {
+  flushPending();
   const hash = location.hash || "#/catalogo";
   if (currentRoute.startsWith("#/catalogo") || currentRoute === "") state.catalogScroll = window.scrollY;
   state.cameFromApp = currentRoute !== "";
@@ -505,11 +544,9 @@ function route() {
 }
 
 function setupInstallHint() {
-  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
   let dismissed = false;
   try { dismissed = localStorage.getItem("lego-hint-chiuso") === "1"; } catch {}
-  if (ios && !standalone && !dismissed) {
+  if (isIosBrowser() && !dismissed) {
     $("#install-hint").hidden = false;
     $("#install-close").addEventListener("click", () => {
       $("#install-hint").hidden = true;
