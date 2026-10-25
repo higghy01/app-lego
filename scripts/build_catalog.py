@@ -9,6 +9,7 @@ import csv
 import gzip
 import io
 import json
+import os
 import sys
 import urllib.request
 from collections import defaultdict
@@ -95,7 +96,11 @@ def build(out_dir, src=None):
     for name, obj in (("catalog.json", catalog), ("minifigs.json", minifigs)):
         (out / name).write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")),
                                 encoding="utf-8")
-    print(f"{len(sets)} set, {len(themes)} temi, {len(figs)} minifigure -> {out}")
+    summary = f"{len(sets)} set, {len(themes)} temi, {len(figs)} minifigure"
+    print(f"{summary} -> {out}")
+    if os.environ.get("GITHUB_ACTIONS"):
+        sample = {s[0]: s[1:] for s in sets if s[0] in ("10294-1", "75192-1")}
+        print(f"::notice title=Catalogo::{summary}. Esempi: {json.dumps(sample, ensure_ascii=False)}")
 
 
 if __name__ == "__main__":
