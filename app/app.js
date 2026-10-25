@@ -658,7 +658,6 @@ function renderDetail(setNum) {
         <a class="btn" href="${esc(shopUrl("ebay", s))}" target="_blank" rel="noopener">🔎 Cerca su eBay</a>
       </div>
       <div class="small muted">I pulsanti aprono la ricerca del set sul sito: lì trovi i prezzi di oggi, anche dell'usato.</div>
-    </div>
     </div>` : ""}
 
     <div class="card" style="margin-top:14px">
