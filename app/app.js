@@ -396,7 +396,7 @@ function renderCatalog() {
 
   $("#view").innerHTML = `
     <div class="search-row">
-      <input type="search" id="q" placeholder="Nome in inglese o codice (es. castle, 10294)" value="${esc(f.q)}" autocomplete="off" enterkeyhint="search">
+      <input type="search" id="q" placeholder="Nome inglese o codice" value="${esc(f.q)}" autocomplete="off" enterkeyhint="search">
       <button class="btn" id="toggle-filters">${filterLabel()}</button>
     </div>
     <div class="filters" id="filters" ${state.showFilters ? "" : "hidden"}>
