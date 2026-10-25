@@ -521,6 +521,107 @@ function renderResults(append = false) {
   }
 }
 
+// ---------- Galleria foto della scheda ----------
+// Prima la scatola (Brickset), poi la foto di Rebrickable, poi le altre foto Brickset
+// e per ultima una pagina con i personaggi (minifigure di Rebrickable).
+
+function firstSlides(s) {
+  const box = state.extra?.sets[s.setNum]?.box;
+  const slides = [];
+  if (box) slides.push({ img: imgUrl(box[0], state.extra.imgBase) });
+  if (s.img) slides.push({ img: s.img, thumb: thumbUrl(s.img) });
+  return slides;
+}
+
+function galleryHtml(slides) {
+  if (!slides.length) return `<div class="noimg">Immagine non disponibile</div>`;
+  const one = (sl, i) => sl.figs
+    ? `<div class="slide figs-slide"><div class="figs-grid">${sl.figs.map(([src, name]) => `<img src="${esc(src)}" alt="${esc(name)}" loading="lazy" onerror="this.remove()">`).join("")}</div><div class="slide-label">I personaggi del set</div></div>`
+    : `<button type="button" class="slide" data-full="${esc(sl.img)}" aria-label="Foto ${i + 1}, apri grande"><img src="${esc(sl.img)}" alt="" ${i ? 'loading="lazy"' : ""} onerror="slideError(this)"></button>`;
+  return `<div class="gallery"><div class="slides">${slides.map(one).join("")}</div>
+    ${slides.length > 1 ? `<div class="dots">${slides.map((_, i) => `<span class="${i ? "" : "on"}"></span>`).join("")}</div>` : ""}</div>`;
+}
+
+// Una foto che non si carica (es. senza internet) sparisce; se non resta niente, il riquadro grigio.
+window.slideError = (img) => {
+  const gallery = img.closest(".gallery");
+  img.closest(".slide").remove();
+  if (gallery) setupGallery(gallery);
+};
+
+function setupGallery(gallery) {
+  const slides = gallery.querySelector(".slides");
+  const n = slides.children.length;
+  if (!n) { gallery.outerHTML = `<div class="noimg">Immagine non disponibile</div>`; return; }
+  const dots = gallery.querySelector(".dots");
+  if (dots) {
+    dots.innerHTML = n > 1 ? Array.from({ length: n }, (_, i) => `<span class="${i ? "" : "on"}"></span>`).join("") : "";
+    slides.onscroll = () => {
+      const i = Math.round(slides.scrollLeft / slides.clientWidth);
+      [...dots.children].forEach((d, j) => d.classList.toggle("on", i === j));
+    };
+  }
+  slides.onclick = (ev) => {
+    const b = ev.target.closest(".slide[data-full]");
+    if (b) openImage(b.dataset.full);
+  };
+}
+
+function openImage(src) {
+  const el = document.createElement("div");
+  el.className = "viewer";
+  el.innerHTML = `<img src="${esc(src)}" alt=""><div class="viewer-bar"><button class="btn primary" data-a="close">Chiudi</button></div>`;
+  document.body.appendChild(el);
+  el.addEventListener("click", () => el.remove());
+  window.addEventListener("hashchange", () => el.remove(), { once: true });
+}
+
+async function fillGallery(s) {
+  const el = $("#gallery");
+  if (el.querySelector(".gallery")) setupGallery(el.querySelector(".gallery"));
+  const sig = (list) => list.map((x) => x.img || "figs").join(" ");
+  el.dataset.sig = sig(firstSlides(s));
+  const [details, figs] = await Promise.all([
+    loadDetails(s.setNum).catch(() => null),
+    s.figs ? loadMinifigs().catch(() => null) : null,
+  ]);
+  const slides = [];
+  const extra = details?.imgs || [];
+  const isBox = (u) => /box1/i.test(u.split("/").pop());
+  if (extra[0] && isBox(extra[0].img)) slides.push(extra.shift());
+  if (s.img) slides.push({ img: s.img });
+  slides.push(...extra);
+  const list = figs?.sets[s.setNum] || [];
+  const faces = list.map(([fig, qty]) => {
+    const [name, , img] = figs.figs[fig] || [];
+    return [imgUrl(img, figs.imgBase), qty > 1 ? `${qty} × ${name}` : name];
+  }).filter(([src]) => src);
+  if (faces.length) slides.push({ figs: faces });
+  // Si ridisegna solo se le foto sono cambiate rispetto a quelle già mostrate.
+  if (!document.body.contains(el) || sig(slides) === el.dataset.sig) return;
+  el.innerHTML = galleryHtml(slides);
+  setupGallery(el.querySelector(".gallery"));
+}
+
+function shopUrl(shop, s) {
+  const q = encodeURIComponent(`LEGO ${s.base} ${s.name}`);
+  return shop === "amazon" ? `https://www.amazon.it/s?k=${q}` : `https://www.ebay.it/sch/i.html?_nkw=${q}`;
+}
+
+// Prezzo di listino ufficiale LEGO in euro (quello tedesco, l'unico in euro che dà Brickset).
+function legoPrice(x) {
+  const eur = x.price?.DE;
+  const retired = x.exit && x.exit <= todayLocal();
+  const upcoming = x.launch && x.launch > todayLocal();
+  let html = eur
+    ? `<div class="big-price">${esc(eur.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }))} €</div>
+       <div class="small muted">Prezzo di listino del sito LEGO (in Germania, dati Brickset).</div>`
+    : `<div>Prezzo LEGO in euro ${NA}</div>`;
+  if (retired) html += `<div class="note">Non è più in vendita sul sito LEGO: per il prezzo di oggi guarda su Amazon o eBay.</div>`;
+  else if (upcoming) html += `<div class="note">Non ancora in vendita: esce il ${esc(fmtDate(x.launch))}.</div>`;
+  return html;
+}
+
 function renderDetail(setNum) {
   const found = state.catalog.bySetNum.get(setNum);
   // Un set salvato in collezione ma tolto dal catalogo resta gestibile (stato, note…).
@@ -544,9 +645,21 @@ function renderDetail(setNum) {
   const showRating = e.s === "built" || e.s === "apart" || e.v;
 
   $("#view").innerHTML = `
-    ${imgTag(s, "hero")}
+    <div id="gallery">${galleryHtml(firstSlides(s))}</div>
     <h2 class="set-title">${esc(s.name)}</h2>
     <div class="muted">${esc(s.setNum)}${s.year ? " · " + s.year : ""}</div>
+    <div class="badges" id="x-badges"></div>
+
+    ${found ? `<div class="card price-card">
+      <h2>Prezzo</h2>
+      <div id="x-lego-price"><div>Prezzo LEGO in euro ${NA}</div></div>
+      <div class="shop-row">
+        <a class="btn" href="${esc(shopUrl("amazon", s))}" target="_blank" rel="noopener">🔎 Cerca su Amazon</a>
+        <a class="btn" href="${esc(shopUrl("ebay", s))}" target="_blank" rel="noopener">🔎 Cerca su eBay</a>
+      </div>
+      <div class="small muted">I pulsanti aprono la ricerca del set sul sito: lì trovi i prezzi di oggi, anche dell'usato.</div>
+    </div>
+    </div>` : ""}
 
     <div class="card" style="margin-top:14px">
       <h2>La mia collezione</h2>
@@ -571,6 +684,11 @@ function renderDetail(setNum) {
       <div class="saved" id="saved"></div>
     </div>
 
+    ${found ? `<div class="card" id="desc-card">
+      <h2>Descrizione</h2>
+      <div id="x-desc" class="muted small">Caricamento…</div>
+    </div>` : ""}
+
     <div class="card">
       <h2>Le mie foto</h2>
       <div class="photos" id="photos"></div>
@@ -592,6 +710,9 @@ function renderDetail(setNum) {
         <dt>Codice a barre</dt><dd id="x-barcode">${NA}</dd>
         <dt>Fascia d'età</dt><dd id="x-age">${NA}</dd>
         <dt>Prezzo di listino</dt><dd id="x-price">${NA}</dd>
+        <dt id="x-bt-label" hidden>Costruisci insieme</dt><dd id="x-bt" hidden></dd>
+        <dt>In vendita dal</dt><dd id="x-launch">${NA}</dd>
+        <dt>Fuori produzione</dt><dd id="x-exit">${NA}</dd>
         <dt>Valutazione</dt><dd id="x-rating">${NA}</dd>
         <dt>Istruzioni</dt><dd><a href="https://www.lego.com/it-it/service/building-instructions/${encodeURIComponent(base)}" target="_blank" rel="noopener">Cerca sul sito LEGO</a></dd>
         <dt>Scheda</dt><dd><a href="https://rebrickable.com/sets/${encodeURIComponent(s.setNum)}/" target="_blank" rel="noopener">Apri su Rebrickable</a><br><a href="https://brickset.com/sets/${encodeURIComponent(s.setNum)}" target="_blank" rel="noopener">Apri su Brickset</a></dd>
@@ -669,8 +790,35 @@ function renderDetail(setNum) {
     if (codes.length) $("#x-barcode").innerHTML = codes.join("<br>");
     $("#x-age").innerHTML = fmtAge(x.age);
     $("#x-price").innerHTML = fmtPrice(x.price);
+    $("#x-lego-price").innerHTML = legoPrice(x);
+    // "Costruisci insieme" solo se Brickset lo dice: se il tag manca non sappiamo se il set lo permette.
+    if (x.bt) {
+      $("#x-bt-label").hidden = $("#x-bt").hidden = false;
+      $("#x-bt").innerHTML = "Sì: si può costruire in più persone con l'app LEGO Builder";
+      $("#x-badges").insertAdjacentHTML("beforeend", `<span class="tag tag-bt">👥 Costruisci insieme</span>`);
+    }
+    if (x.launch) $("#x-launch").innerHTML = esc(fmtDate(x.launch)) + (x.launch > todayLocal() ? ' <span class="muted small">(non ancora uscito)</span>' : "");
+    if (x.exit) $("#x-exit").innerHTML = x.exit > todayLocal() ? `previsto dal ${esc(fmtDate(x.exit))}` : `dal ${esc(fmtDate(x.exit))}`;
+    else if (x.launch && x.launch <= todayLocal()) $("#x-exit").innerHTML = "no, non ancora";
     if (x.rating) $("#x-rating").innerHTML = `${esc(x.rating.toLocaleString("it-IT"))} su 5 <span class="muted small">(Brickset)</span>`;
   }).catch(() => {});
+
+  if (found) fillGallery(s);
+  if (found) {
+    loadDetails(s.setNum).then((d) => {
+      const el = $("#x-desc");
+      if (!el) return;
+      if (!d || !d.desc) { el.innerHTML = NA; return; }
+      el.classList.remove("muted", "small");
+      el.innerHTML = `<div class="desc">${d.desc.split("\n").map((p) => `<p>${esc(p)}</p>`).join("")}</div>
+        <div class="small muted">Testo in inglese, da Brickset.</div>`;
+      const box = el.querySelector(".desc");
+      if (box.scrollHeight > box.clientHeight + 4) {
+        el.insertAdjacentHTML("beforeend", `<button class="btn full" type="button" id="desc-more">Leggi tutto</button>`);
+        $("#desc-more").addEventListener("click", (ev) => { box.classList.add("open"); ev.target.remove(); });
+      } else box.classList.add("open");
+    }).catch(() => { const el = $("#x-desc"); if (el) el.innerHTML = "Descrizione non disponibile senza internet."; });
+  }
 
   if (s.figs) {
     loadMinifigs().then((m) => {
