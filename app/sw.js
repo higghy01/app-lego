@@ -1,5 +1,5 @@
 // Fa funzionare l'app anche senza internet.
-const VERSION = "v9";
+const VERSION = "v10";
 const SHELL = "shell-" + VERSION;
 const DATA = "data";
 const IMAGES = "images";
@@ -31,7 +31,7 @@ self.addEventListener("fetch", (e) => {
     e.respondWith(staleWhileRevalidate(req));
   } else if (url.origin === location.origin) {
     e.respondWith(networkFirst(req));
-  } else if (url.hostname.endsWith("rebrickable.com")) {
+  } else if (url.hostname.endsWith("rebrickable.com") || url.hostname === "images.brickset.com") {
     e.respondWith(cachedImage(req));
   }
 });
