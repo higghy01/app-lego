@@ -474,8 +474,8 @@ main { padding-top: 20px; }
 .price-card { margin-top: 14px; }
 .big-price { font-size: 30px; font-weight: 800; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
 .price-card .note { margin-top: 8px; font-weight: 600; }
-.shop-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 8px; }
-.shop-row .btn { text-align: center; text-decoration: none; color: inherit; display: flex; align-items: center; justify-content: center; }
+.shop-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0 8px; }
+.shop-row .btn { padding: 10px 8px; white-space: normal; text-align: center; text-decoration: none; color: inherit; display: flex; align-items: center; justify-content: center; }
 .desc { max-height: 9.6em; overflow: hidden; position: relative; }
 .desc:not(.open)::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2.4em; background: linear-gradient(transparent, var(--card)); }
 .desc.open { max-height: none; }
