@@ -31,6 +31,8 @@ FIRST_YEAR = 1949
 PAGE_SIZE = 500
 IMG_PREFIX = "https://images.brickset.com/sets/"
 PHOTOS_REFRESH_DAYS = 30  # i set appena usciti ricevono foto nuove: si ricontrollano dopo un mese
+PHOTOS_RETRY_DAYS = 7  # un set la cui richiesta di foto e' fallita si riprova dopo una settimana
+PHOTOS_MAX_ERRORS = 3  # tanti errori di fila = limite o rete: ci si ferma fino a domani
 
 
 def call(key, params, method="getSets"):
@@ -174,6 +176,7 @@ def photos_todo(years, photos, today):
             if done is None:
                 never.append(key)
             elif done.get("nimg") != s["nimg"] or (
+                    done.get("err") and (today - date.fromisoformat(done["fetched"])).days >= PHOTOS_RETRY_DAYS) or (
                     int(year) >= today.year - 1
                     and (today - date.fromisoformat(done["fetched"])).days >= PHOTOS_REFRESH_DAYS):
                 stale.append((done["fetched"], set_num))
@@ -183,16 +186,34 @@ def photos_todo(years, photos, today):
 
 
 def fetch_photos(key, years, photos, budget, today):
+    """Restituisce (foto chieste, set non riusciti). Un set che da' errore viene saltato
+    e riprovato tra qualche giorno, cosi' non blocca la coda; dopo qualche errore di fila
+    (probabile limite o rete) ci si ferma e quei set restano in coda per domani."""
     by_num = {n: s for info in years.values() for n, s in info["sets"].items()}
-    done = 0
+    done, failed, streak = 0, 0, []
+
+    def skip(nums):
+        for n in nums:  # le foto gia' salvate restano, si segna solo di riprovare piu' avanti
+            photos[n] = {**photos.get(n, {"imgs": []}), "fetched": today.isoformat(), "nimg": by_num[n]["nimg"], "err": True}
+        return len(nums)
+
     for set_num in photos_todo(years, photos, today)[:budget]:
         s = by_num[set_num]
-        data = call(key, {"setID": s["id"]}, method="getAdditionalImages")
+        try:
+            data = call(key, {"setID": s["id"]}, method="getAdditionalImages")
+        except Exception as err:  # noqa: BLE001 - un set sbagliato non deve fermare gli altri
+            print(f"Foto non riuscite per {set_num}: {err}")
+            streak.append(set_num)
+            if len(streak) >= PHOTOS_MAX_ERRORS:
+                return done, failed
+            continue
+        failed += skip(streak)
+        streak = []
         images = [[short_img(i.get("imageURL")), short_img(i.get("thumbnailURL"))]
                   for i in data.get("additionalImages") or [] if i.get("imageURL")]
         photos[set_num] = {"fetched": today.isoformat(), "nimg": s["nimg"], "imgs": order_photos(images)}
         done += 1
-    return done
+    return done, failed + skip(streak)
 
 
 def load(path, field):
@@ -220,7 +241,7 @@ def main():
                     key=lambda y: years[y]["fetched"])
     todo = recent + missing + oldest
 
-    budget, done, n_photos = args.max_calls, [], 0
+    budget, done, n_photos, n_failed = args.max_calls, [], 0, 0
     today = datetime.now(timezone.utc).date()
     error = None
     try:
@@ -237,9 +258,9 @@ def main():
     except Exception as err:  # noqa: BLE001 - se getSets e' finito, le foto si chiedono lo stesso
         error = err
     try:
-        n_photos = fetch_photos(key, years, photos, args.max_images, today)
+        n_photos, n_failed = fetch_photos(key, years, photos, args.max_images, today)
     finally:
-        save(years, texts, photos, done, n_photos)  # anche se Brickset si ferma a meta', quanto scaricato resta
+        save(years, texts, photos, done, n_photos, n_failed)  # anche se Brickset si ferma a meta', quanto scaricato resta
     if error:
         raise error
 
@@ -251,7 +272,7 @@ def write_lines(path, field, items):
     path.write_text(f'{{"{field}":{{\n' + lines + "\n}}\n", encoding="utf-8")
 
 
-def save(years, texts, photos, done, n_photos):
+def save(years, texts, photos, done, n_photos, n_failed=0):
     DATA.mkdir(parents=True, exist_ok=True)
     write_lines(OUT, "years", years)
     write_lines(TEXTS, "years", texts)
@@ -261,7 +282,8 @@ def save(years, texts, photos, done, n_photos):
     n_desc = sum(1 for v in texts.values() for t in v["sets"].values() if t.get("desc"))
     summary = (f"Anni aggiornati: {', '.join(done) or 'nessuno'}. Anni salvati: {len(years)}. "
                f"Set con dati Brickset: {len(all_sets)}. Con descrizione: {n_desc}. "
-               f"Costruisci insieme: {n_bt}. Foto chieste oggi: {n_photos}, set con foto: {len(photos)}.")
+               f"Costruisci insieme: {n_bt}. Foto chieste oggi: {n_photos}, foto non riuscite: {n_failed}, "
+               f"set con foto: {sum(1 for p in photos.values() if p.get('imgs'))}.")
     print(summary)
     if os.environ.get("GITHUB_ACTIONS"):
         print(f"::notice title=Brickset::{summary}")
