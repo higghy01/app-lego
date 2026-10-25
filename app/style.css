@@ -226,10 +226,10 @@ div.thumb, .noimg {
   padding: 8px 8px; font-size: 14.5px; font-weight: 600; line-height: 1.2; cursor: pointer; text-align: center;
 }
 .status-btn {
-  display: flex; align-items: center; justify-content: center; gap: 7px;
+  display: block;
   transition: background-color .18s, color .18s, border-color .18s, transform .1s;
 }
-.status-btn::before { content: ""; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--c, var(--st-none)); }
+.status-btn::before { content: ""; display: inline-block; vertical-align: 1px; width: 9px; height: 9px; margin-right: 7px; border-radius: 50%; background: var(--c, var(--st-none)); }
 .status-btn[data-status=wish] { --c: var(--st-wish); }
 .status-btn[data-status=owned] { --c: var(--st-owned); }
 .status-btn[data-status=building] { --c: var(--st-building); }
@@ -278,6 +278,29 @@ li.empty { list-style: none; }
 #scan-start { margin-bottom: 16px; padding: 10px 24px; }
 #scan-result { margin-top: 4px; }
 .scan-frame { position: absolute; left: 10%; right: 10%; top: 30%; bottom: 30%; border: 3px solid rgba(255,255,255,.9); border-radius: 12px; box-shadow: 0 0 0 999px rgba(0,0,0,.3); }
+
+/* ---------- Avvisi in tema scuro ---------- */
+@media (prefers-color-scheme: dark) {
+  .warn, .install-hint { background: #3a3110; color: #fbe9a6; }
+}
+
+/* ---------- Movimento leggero ---------- */
+.btn, .chip, .status-btn, .item, .tabs a span, .top .back {
+  transition: transform .12s ease, background-color .18s, color .18s, border-color .18s, box-shadow .18s;
+}
+.btn:active, .chip:active, .status-btn:active, .top .back:active { transform: scale(.96); }
+.item:active { transform: scale(.98); }
+.tabs a:active span { transform: scale(.9); }
+.btn:focus-visible, .chip:focus-visible, .status-btn:focus-visible, .item:focus-visible, .tabs a:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--red) 45%, transparent); outline-offset: 2px;
+}
+#view > * { animation: appear .22s ease-out both; }
+@keyframes appear { from { opacity: 0; transform: translateY(6px); } }
+.status-btn.on { animation: pop .22s ease-out; }
+@keyframes pop { 50% { transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
 
 /* ---------- Foto e statistiche ---------- */
 .photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
