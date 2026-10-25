@@ -30,6 +30,7 @@ const state = {
   shown: PAGE,
   catalogScroll: 0,
   collectionChip: "all",
+  photoCounts: {},      // numero di foto per set (le foto sono in IndexedDB)
 };
 
 // ---------- Utilità ----------
@@ -115,6 +116,101 @@ function updateEntry(setNum, changes) {
   if (e.s === "none" && !e.f && !e.n && !e.d) delete state.collection[setNum];
   else state.collection[setNum] = e;
   return saveCollection();
+}
+
+// ---------- Foto (salvate sul telefono in IndexedDB, che regge file grandi) ----------
+
+const PHOTO_DB = "lego-foto";
+const PHOTO_MAX_SIDE = 1600; // pixel: abbastanza per vederla bene, ma leggera (circa 200-400 KB)
+let photoDbPromise = null;
+
+function photoDb() {
+  photoDbPromise ||= new Promise((resolve, reject) => {
+    const req = indexedDB.open(PHOTO_DB, 1);
+    req.onupgradeneeded = () => {
+      const store = req.result.createObjectStore("foto", { keyPath: "id" });
+      store.createIndex("set", "set");
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => { photoDbPromise = null; reject(req.error); };
+  });
+  return photoDbPromise;
+}
+
+async function photoTx(mode, fn) {
+  const db = await photoDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("foto", mode);
+    const out = fn(tx.objectStore("foto"));
+    tx.oncomplete = () => resolve(out && "result" in out ? out.result : undefined);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error("operazione annullata"));
+  });
+}
+
+const photosOf = (setNum) => photoTx("readonly", (st) => st.index("set").getAll(setNum))
+  .then((list) => list.sort((a, b) => a.date.localeCompare(b.date)));
+const allPhotos = () => photoTx("readonly", (st) => st.getAll());
+const putPhoto = (p) => photoTx("readwrite", (st) => st.put(p));
+const deletePhoto = (id) => photoTx("readwrite", (st) => st.delete(id));
+
+// Numero di foto per set, per mostrare 📷 negli elenchi e contarle nelle statistiche.
+async function loadPhotoCounts() {
+  const counts = {};
+  try {
+    const db = await photoDb();
+    await new Promise((resolve, reject) => {
+      const req = db.transaction("foto").objectStore("foto").index("set").openKeyCursor();
+      req.onsuccess = () => {
+        const c = req.result;
+        if (!c) { resolve(); return; }
+        counts[c.key] = (counts[c.key] || 0) + 1;
+        c.continue();
+      };
+      req.onerror = () => reject(req.error);
+    });
+  } catch {}
+  state.photoCounts = counts;
+  return counts;
+}
+
+// Rimpicciolisce la foto del telefono (spesso 3-5 MB) a un JPEG leggero.
+async function shrinkPhoto(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("immagine non leggibile"));
+      el.src = url;
+    });
+    const scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.naturalWidth * scale);
+    canvas.height = Math.round(img.naturalHeight * scale);
+    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.82));
+    if (!blob) throw new Error("conversione non riuscita");
+    return blob;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => resolve(r.result);
+  r.onerror = () => reject(r.error);
+  r.readAsDataURL(blob);
+});
+
+function dataUrlToBlob(url) {
+  const m = /^data:(image\/[\w+.-]+);base64,(.*)$/s.exec(url);
+  if (!m) return null;
+  const bin = atob(m[2]);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: m[1] });
 }
 
 // ---------- Catalogo ----------
@@ -282,7 +378,7 @@ function setItem(s) {
   return `<li><a class="item" href="#/set/${encodeURIComponent(s.setNum)}">
     ${imgTag(s, "thumb")}
     <div class="info"><div class="name">${esc(s.name)}</div><div class="meta">${esc(meta)}</div>${badge}</div>
-    ${e.f ? '<span class="fav">❤️</span>' : ""}
+    ${state.photoCounts[s.setNum] ? '<span class="fav" title="Ha foto">📷</span>' : ""}${e.f ? '<span class="fav">❤️</span>' : ""}
   </a></li>`;
 }
 
@@ -431,6 +527,14 @@ function renderDetail(setNum) {
       <div class="saved" id="saved"></div>
     </div>
 
+    <div class="card">
+      <h2>Le mie foto</h2>
+      <div class="photos" id="photos"></div>
+      <input type="file" id="photo-input" accept="image/*" hidden>
+      <button class="btn full" id="photo-add" type="button">📷 Aggiungi una foto</button>
+      <div class="small muted" id="photo-msg"></div>
+    </div>
+
     ${!found ? `<div class="warn">Questo set è nella tua collezione ma non è più nel catalogo di Rebrickable. Puoi comunque cambiare stato e note, o metterlo su "Non posseduto" (e togliere note e preferito) per toglierlo.</div>` : ""}
     <div class="card">
       <h2>Dati del set</h2>
@@ -497,6 +601,8 @@ function renderDetail(setNum) {
     flash();
   });
 
+  setupPhotos(setNum);
+
   loadExtra().then(({ sets }) => {
     const x = sets[s.setNum];
     if (!x || !$("#x-barcode")) return;
@@ -521,6 +627,63 @@ function renderDetail(setNum) {
       }).join("")}</ul>`;
     }).catch(() => { const el = $("#figs"); if (el) el.innerHTML = "Elenco non disponibile senza internet."; });
   }
+}
+
+async function setupPhotos(setNum) {
+  const box = $("#photos");
+  const msg = $("#photo-msg");
+  const urls = [];
+  const draw = async () => {
+    let list;
+    try { list = await photosOf(setNum); } catch { msg.textContent = "Le foto non sono disponibili su questo telefono."; $("#photo-add").hidden = true; return; }
+    if (!document.body.contains(box)) return;
+    urls.splice(0).forEach((u) => URL.revokeObjectURL(u));
+    state.photoCounts[setNum] = list.length;
+    if (!list.length) delete state.photoCounts[setNum];
+    box.innerHTML = list.map((p) => {
+      const u = URL.createObjectURL(p.blob);
+      urls.push(u);
+      return `<button type="button" class="photo" data-id="${esc(p.id)}" data-src="${u}" aria-label="Apri foto"><img src="${u}" alt=""></button>`;
+    }).join("");
+    msg.textContent = list.length ? "Tocca una foto per vederla grande o cancellarla." : "Fotografa il set quando l'hai costruito.";
+    box.querySelectorAll(".photo").forEach((b) => b.addEventListener("click", () => openPhoto(b.dataset.src, b.dataset.id, draw)));
+  };
+  $("#photo-add").addEventListener("click", () => $("#photo-input").click());
+  $("#photo-input").addEventListener("change", async (ev) => {
+    const file = ev.target.files[0];
+    ev.target.value = "";
+    if (!file) return;
+    msg.textContent = "Salvo la foto…";
+    try {
+      const blob = await shrinkPhoto(file);
+      await putPhoto({ id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`, set: setNum, date: new Date().toISOString(), blob });
+      await draw();
+      msg.textContent = "✓ Foto salvata. Ricordati ogni tanto di fare il Backup.";
+    } catch (err) {
+      msg.textContent = "";
+      alert("Non sono riuscito a salvare la foto (memoria del telefono piena?). Riprova con un'altra foto.");
+    }
+  });
+  await draw();
+}
+
+function openPhoto(src, id, after) {
+  const el = document.createElement("div");
+  el.className = "viewer";
+  el.innerHTML = `<img src="${src}" alt="">
+    <div class="viewer-bar"><button class="btn" data-a="del">🗑 Cancella</button><button class="btn primary" data-a="close">Chiudi</button></div>`;
+  document.body.appendChild(el);
+  const close = () => el.remove();
+  el.addEventListener("click", async (ev) => {
+    const a = ev.target.dataset.a;
+    if (a === "del") {
+      if (!confirm("Cancellare questa foto?")) return;
+      try { await deletePhoto(id); } catch { alert("Non sono riuscito a cancellare la foto."); return; }
+      close();
+      after();
+    } else if (a === "close" || ev.target === el) close();
+  });
+  window.addEventListener("hashchange", close, { once: true });
 }
 
 // ---------- Scansione codice a barre ----------
@@ -657,7 +820,7 @@ async function handleCode(text, typed) {
 
 function collectionList(filter) {
   return Object.entries(state.collection)
-    .filter(([, e]) => filter(e))
+    .filter(([num, e]) => filter(e, num))
     .map(([num, e]) => ({ set: state.catalog.bySetNum.get(num) || { setNum: num, name: "(set non più nel catalogo)", img: "" }, e }))
     .sort((a, b) => (b.e.u || "").localeCompare(a.e.u || ""))
     .map((x) => x.set);
@@ -674,18 +837,72 @@ function renderCollection() {
     ["apart", "Smontati", (e) => e.s === "apart"],
     ["fav", "Preferiti ❤️", (e) => e.f],
     ["notes", "Con note", (e) => e.n],
+    ["photo", "Con foto 📷", (e, num) => state.photoCounts[num]],
   ];
   const draw = () => {
     const [, , filter] = chips.find((c) => c[0] === state.collectionChip) || chips[0];
     const list = collectionList(filter);
     $("#view").innerHTML = `${isIosBrowser() ? SAFARI_WARNING : ""}
+      ${statsCard()}
       <div class="chips">${chips.map(([id, label, fn]) =>
         `<button class="chip ${id === state.collectionChip ? "on" : ""}" data-chip="${id}">${esc(label)} (${collectionList(fn).length})</button>`).join("")}</div>
       ${list.length ? `<ul class="list">${list.map(setItem).join("")}</ul>` :
         `<div class="empty"><b>Ancora niente qui</b>Cerca un set nel <a href="#/catalogo">Catalogo</a>, aprilo e scegli il suo stato (per esempio "Costruito").</div>`}`;
     document.querySelectorAll("[data-chip]").forEach((b) => b.addEventListener("click", () => { state.collectionChip = b.dataset.chip; draw(); }));
+    fillValue();
   };
   draw();
+  // Le foto si contano in un secondo momento: quando arrivano si aggiornano numeri e 📷.
+  loadPhotoCounts().then(() => { if (location.hash === "#/collezione") draw(); });
+}
+
+function statsCard() {
+  const entries = Object.entries(state.collection);
+  const owned = entries.filter(([, e]) => OWNED.includes(e.s));
+  const built = entries.filter(([, e]) => e.s === "built");
+  const wish = entries.filter(([, e]) => e.s === "wish");
+  let builtParts = 0, missingParts = 0;
+  for (const [num] of built) {
+    const parts = state.catalog.bySetNum.get(num)?.parts;
+    if (parts) builtParts += parts; else missingParts++;
+  }
+  const photos = Object.values(state.photoCounts).reduce((a, b) => a + b, 0);
+  const tile = (n, label, id = "") => `<div class="stat"${id ? ` id="${id}"` : ""}><b>${n}</b><span>${label}</span></div>`;
+  return `<div class="card">
+    <h2>Le mie statistiche</h2>
+    <div class="stats">
+      ${tile(fmtNum(owned.length), "set posseduti")}
+      ${tile(fmtNum(built.length), "set costruiti")}
+      ${tile(fmtNum(builtParts), "pezzi costruiti")}
+      ${tile(fmtNum(wish.length), "set desiderati")}
+      ${tile(fmtNum(photos), "foto")}
+      ${tile('<span class="na">…</span>', "valore indicativo", "stat-value")}
+    </div>
+    ${missingParts ? `<p class="small muted">Pezzi non disponibili per ${missingParts} ${missingParts === 1 ? "set costruito" : "set costruiti"}: non sono contati.</p>` : ""}
+    <p class="small muted" id="value-note"></p>
+  </div>`;
+}
+
+// Valore indicativo: somma dei prezzi di listino originali (in euro, prezzo LEGO in Germania, da Brickset).
+// Non è il valore di mercato di oggi, e i set senza prezzo non vengono contati.
+async function fillValue() {
+  const owned = Object.entries(state.collection).filter(([, e]) => OWNED.includes(e.s)).map(([n]) => n);
+  const show = (html, note) => {
+    if ($("#stat-value")) $("#stat-value").querySelector("b").innerHTML = html;
+    if ($("#value-note")) $("#value-note").textContent = note;
+  };
+  if (!owned.length) { show("0 €", ""); return; }
+  let sets;
+  try { ({ sets } = await loadExtra()); } catch { show(NA, "Il valore si calcola la prima volta con internet."); return; }
+  let total = 0, priced = 0;
+  for (const n of owned) {
+    const eur = sets[n]?.price?.DE;
+    if (eur) { total += eur; priced++; }
+  }
+  if (!priced) { show(NA, "Per ora non c'è il prezzo di listino di nessuno dei tuoi set."); return; }
+  show(`${Math.round(total).toLocaleString("it-IT")} €`,
+    `Valore indicativo = somma dei prezzi di listino originali in euro (prezzo LEGO in Germania, da Brickset). ` +
+    (priced < owned.length ? `Calcolato su ${priced} set su ${owned.length}: per gli altri il prezzo non è disponibile.` : `Calcolato su tutti i ${priced} set posseduti.`));
 }
 
 function renderWishlist() {
@@ -706,7 +923,8 @@ function renderBackup() {
     <div class="card">
       <h2>Salva una copia della collezione</h2>
       <p class="small">La collezione è salvata su questo telefono. Ogni tanto salva una copia (per esempio in iCloud Drive o mandala a te stessa via email): se cambi telefono o cancelli l'app, potrai recuperare tutto.</p>
-      <p class="small muted">Set nella collezione: ${count}. Ultimo backup: ${last ? fmtDate(last) : "mai"}.</p>
+      <p class="small muted">Set nella collezione: ${count}. Foto: <span id="backup-photos">…</span>. Ultimo backup: ${last ? fmtDate(last) : "mai"}.</p>
+      <p class="small muted">Le tue foto sono dentro il backup: con molte foto il file diventa grande (circa 0,3 MB per foto).</p>
       <button class="btn primary full" id="export">Esporta backup</button>
     </div>
     <div class="card">
@@ -724,10 +942,25 @@ function renderBackup() {
   $("#import-btn").addEventListener("click", () => $("#import").click());
   $("#import").addEventListener("change", importBackup);
   if ($("#undo-import")) $("#undo-import").addEventListener("click", undoImport);
+  loadPhotoCounts().then((c) => {
+    if ($("#backup-photos")) $("#backup-photos").textContent = Object.values(c).reduce((a, b) => a + b, 0);
+  });
 }
 
 async function exportBackup() {
-  const data = { app: "i-miei-lego", versione: 1, data: new Date().toISOString(), collezione: state.collection };
+  const btn = $("#export");
+  let foto = [];
+  try {
+    btn.disabled = true;
+    btn.textContent = "Preparo il backup…";
+    for (const p of await allPhotos()) foto.push({ id: p.id, set: p.set, data: p.date, img: await blobToDataUrl(p.blob) });
+  } catch (err) {
+    if (!confirm("Non riesco a leggere le foto. Vuoi fare lo stesso il backup, ma senza foto?")) { renderBackup(); return; }
+    foto = [];
+  }
+  btn.disabled = false;
+  btn.textContent = "Esporta backup";
+  const data = { app: "i-miei-lego", versione: 2, data: new Date().toISOString(), collezione: state.collection, foto };
   const name = `backup-lego-${new Date().toISOString().slice(0, 10)}.json`;
   const file = new File([JSON.stringify(data, null, 1)], name, { type: "application/json" });
   try {
@@ -787,7 +1020,20 @@ async function importBackup(ev) {
     return;
   }
   const n = Object.keys(collection).length;
-  if (!confirm(`Il backup del ${fmtDate(data.data) || "data sconosciuta"} contiene ${n} set. Sostituire la collezione attuale?`)) return;
+  const photos = Array.isArray(data.foto) ? data.foto.filter((p) => p && typeof p.id === "string" && typeof p.set === "string" && typeof p.img === "string") : [];
+  const withPhotos = photos.length ? ` e ${photos.length} foto` : "";
+  if (!confirm(`Il backup del ${fmtDate(data.data) || "data sconosciuta"} contiene ${n} set${withPhotos}. Sostituire la collezione attuale?`)) return;
+  // Le foto del backup si aggiungono a quelle già sul telefono: nessuna foto viene cancellata.
+  let photoErrors = 0;
+  for (const p of photos) {
+    const blob = dataUrlToBlob(p.img);
+    try {
+      if (!blob) throw new Error("foto non valida");
+      await putPhoto({ id: p.id, set: p.set, date: typeof p.data === "string" ? p.data : new Date().toISOString(), blob });
+    } catch { photoErrors++; }
+  }
+  await loadPhotoCounts();
+  if (photoErrors) alert(`Attenzione: ${photoErrors} foto non sono state recuperate (memoria del telefono piena?).`);
   try { localStorage.setItem(PREV_KEY, JSON.stringify(state.collection)); } catch {}
   state.collection = collection;
   state.collectionVersion++;
@@ -844,6 +1090,8 @@ async function start() {
   }
   window.addEventListener("hashchange", route);
   route();
+  // Appena si sa quali set hanno foto, si aggiungono le 📷 all'elenco già mostrato.
+  loadPhotoCounts().then(() => { if ($("#results")) renderResults(); });
 }
 
 start();
