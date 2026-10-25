@@ -10,6 +10,7 @@
   --text: #1d1b19;
   --muted: #6f6a64;
   --line: #e6e2db;
+  --star-off: #c9c2b6; /* stelle vuote: più scure delle linee, per vederle sul bianco */
   --accent: #0a66c2;
   --ok: #1e8e3e;
   --shadow: 0 1px 2px rgba(40, 30, 20, .06), 0 4px 16px rgba(40, 30, 20, .06);
@@ -32,6 +33,7 @@
     --text: #f4f2ee;
     --muted: #a8a39c;
     --line: #34312e;
+    --star-off: var(--line);
     --accent: #5aa9ff;
     --ok: #4cc26b;
     --shadow: 0 1px 2px rgba(0, 0, 0, .4);
@@ -243,14 +245,14 @@ div.thumb, .noimg {
 .stars { display: flex; gap: 6px; }
 .star {
   width: var(--tap); height: var(--tap); padding: 0; border: none; background: none;
-  font-size: 36px; line-height: 1; color: var(--line); cursor: pointer;
+  font-size: 36px; line-height: 1; color: var(--star-off); cursor: pointer;
   -webkit-tap-highlight-color: transparent; transition: transform .12s ease-out, color .12s;
 }
 .star.on { color: var(--yellow); text-shadow: 0 1px 0 color-mix(in srgb, #000 25%, var(--yellow)); }
 .star:active { transform: scale(.88); }
 .star:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; border-radius: 8px; }
 .stars-small { display: block; margin-top: 3px; font-size: 13px; letter-spacing: 1px; color: var(--yellow); text-shadow: 0 0 1px color-mix(in srgb, #000 40%, var(--yellow)); }
-.stars-small .off { color: var(--line); text-shadow: none; }
+.stars-small .off { color: var(--star-off); text-shadow: none; }
 .saved { font-size: 13px; font-weight: 600; color: var(--ok); height: 18px; margin-top: 6px; text-align: center; }
 dl.data { display: grid; grid-template-columns: auto 1fr; column-gap: 16px; margin: 0; }
 dl.data dt, dl.data dd { padding: 10px 0; border-top: 1px solid var(--line); }
