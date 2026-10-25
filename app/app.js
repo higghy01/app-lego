@@ -15,6 +15,7 @@ const OWNED = ["owned", "building", "built", "apart"];
 const PAGE = 60;
 const STORE_KEY = "lego-collezione-v1";
 const BACKUP_KEY = "lego-ultimo-backup";
+const PREV_KEY = "lego-collezione-prima-import";
 const NA = '<span class="na">non disponibile</span>';
 
 // ---------- Stato ----------
@@ -23,7 +24,8 @@ const state = {
   catalog: null,        // { generated, sets: [...], bySetNum, themes }
   minifigs: null,       // caricato solo quando serve
   collection: loadCollection(),
-  filters: { q: "", theme: "", yearFrom: "", yearTo: "", partsMin: "", partsMax: "", status: "", sort: "year" },
+  filters: { q: "", theme: "", sub: "", yearFrom: "", yearTo: "", partsMin: "", partsMax: "", status: "", onlyParts: true, sort: "year" },
+  collectionVersion: 0, // cambia a ogni modifica, così il filtro per stato si aggiorna
   showFilters: false,
   shown: PAGE,
   catalogScroll: 0,
@@ -55,7 +57,7 @@ function isIosBrowser() {
   return ios && !standalone;
 }
 
-const SAFARI_WARNING = `<div class="warn">Stai usando Safari: i set che segni qui restano solo in Safari e potrebbero essere cancellati. Prima installa l'app (Condividi → Aggiungi alla schermata Home) e usa quella.</div>`;
+const SAFARI_WARNING = `<div class="warn">Stai usando Safari: i set che segni qui restano solo in Safari e possono essere cancellati, e l'app installata non li vede. Prima installa l'app (Condividi → Aggiungi alla schermata Home) e usa sempre quella. Se hai già segnato dei set qui: Backup → Esporta, poi nell'app installata Backup → Importa.</div>`;
 
 function imgUrl(path, base) {
   if (!path) return "";
@@ -105,6 +107,7 @@ function entry(setNum) {
 
 function updateEntry(setNum, changes) {
   const e = { ...entry(setNum), ...changes, u: new Date().toISOString() };
+  state.collectionVersion++;
   if (e.s === "none" && !e.f && !e.n && !e.d) delete state.collection[setNum];
   else state.collection[setNum] = e;
   return saveCollection();
@@ -118,23 +121,35 @@ async function loadCatalog() {
   const raw = await res.json();
   const themes = {};
   for (const [id, [name, parent]] of Object.entries(raw.themes)) themes[id] = { id: +id, name, parent };
-  const rootOf = (id) => {
-    let t = themes[id];
-    while (t && t.parent != null && themes[t.parent]) t = themes[t.parent];
-    return t ? t.id : null;
+  // Catena dei temi dal principale al più specifico, es. [Star Wars, Ultimate Collector Series].
+  const chainOf = (id) => {
+    const chain = [];
+    for (let t = themes[id]; t && !chain.includes(t.id); t = t.parent != null ? themes[t.parent] : null) chain.unshift(t.id);
+    return chain;
   };
-  const sets = raw.sets.map(([setNum, name, year, themeId, parts, img, figs]) => ({
-    setNum, name, year, themeId, parts, figs,
-    img: imgUrl(img, raw.imgBase),
-    root: rootOf(themeId),
-    key: norm(name) + " " + norm(setNum),
-  }));
+  const sets = raw.sets.map(([setNum, name, year, themeId, parts, img, figs]) => {
+    const chain = chainOf(themeId);
+    return {
+      setNum, name, year, themeId, figs, chain,
+      parts: parts || null, // 0 pezzi = dato mancante (libri, gadget…)
+      img: imgUrl(img, raw.imgBase),
+      root: chain[0] ?? null,
+      base: setNum.replace(/-\d+$/, ""),
+      key: norm(name) + " " + norm(setNum) + " " + chain.map((id) => norm(themes[id].name)).join(" "),
+    };
+  });
+  // Ordinamenti calcolati una volta sola, così la ricerca resta veloce.
+  const collator = new Intl.Collator("it", { numeric: true, sensitivity: "base" });
+  [...sets].sort((a, b) => collator.compare(a.setNum, b.setNum)).forEach((s, i) => { s.codeRank = i; });
+  [...sets].sort((a, b) => collator.compare(a.name, b.name)).forEach((s, i) => { s.nameRank = i; });
   const bySetNum = new Map(sets.map((s) => [s.setNum, s]));
-  const rootThemes = [...new Set(sets.map((s) => s.root))]
-    .filter((id) => id != null)
-    .map((id) => themes[id])
-    .sort((a, b) => a.name.localeCompare(b.name, "it"));
-  state.catalog = { generated: raw.generated, sets, bySetNum, themes, rootThemes, imgBase: raw.imgBase };
+  const byTheme = (ids) => [...ids].filter((id) => themes[id]).map((id) => themes[id]).sort((a, b) => collator.compare(a.name, b.name));
+  const children = {};
+  for (const s of sets) {
+    for (let i = 1; i < s.chain.length; i++) (children[s.chain[i - 1]] ||= new Set()).add(s.chain[i]);
+  }
+  const rootThemes = byTheme(new Set(sets.map((s) => s.root).filter((id) => id != null)));
+  state.catalog = { generated: raw.generated, sets, bySetNum, themes, rootThemes, children, byTheme, imgBase: raw.imgBase };
 }
 
 async function loadMinifigs() {
@@ -152,36 +167,50 @@ function themePath(themeId) {
   return { theme: path[0] || null, sub: path.length > 1 ? path.slice(1).join(" › ") : null };
 }
 
+let filteredCache = { sig: null, list: [] };
+
 function filteredSets() {
   const f = state.filters;
+  const sig = JSON.stringify(f) + "|" + state.collectionVersion;
+  if (filteredCache.sig === sig) return filteredCache.list;
   const q = norm(f.q.trim());
-  const words = q.split(/\s+/).filter(Boolean);
+  // Una ricerca fatta solo di cifre (es. 10294 o 10294-1) è un codice: cerca dall'inizio del codice.
+  const isCode = /^\d+(-\d*)?$/.test(q);
+  const words = isCode ? [] : q.split(/\s+/).filter(Boolean);
   const num = (v) => (v === "" ? null : Number(v));
   const yFrom = num(f.yearFrom), yTo = num(f.yearTo), pMin = num(f.partsMin), pMax = num(f.partsMax);
-  const theme = f.theme === "" ? null : Number(f.theme);
+  const theme = f.sub !== "" ? Number(f.sub) : f.theme !== "" ? Number(f.theme) : null;
   let list = state.catalog.sets.filter((s) => {
+    if (isCode && !s.setNum.startsWith(q)) return false;
     if (words.length && !words.every((w) => s.key.includes(w))) return false;
-    if (theme != null && s.root !== theme) return false;
-    if (yFrom != null && !(s.year >= yFrom)) return false;
-    if (yTo != null && !(s.year <= yTo)) return false;
-    if (pMin != null && !(s.parts >= pMin)) return false;
-    if (pMax != null && !(s.parts <= pMax)) return false;
+    if (theme != null && !s.chain.includes(theme)) return false;
+    if (f.onlyParts && s.parts == null && !s.figs) return false;
+    if (yFrom != null && !(s.year != null && s.year >= yFrom)) return false;
+    if (yTo != null && !(s.year != null && s.year <= yTo)) return false;
+    if (pMin != null && !(s.parts != null && s.parts >= pMin)) return false;
+    if (pMax != null && !(s.parts != null && s.parts <= pMax)) return false;
     if (f.status) {
       const st = entry(s.setNum).s;
       if (f.status === "fav" ? !entry(s.setNum).f : st !== f.status) return false;
     }
     return true;
   });
-  // Se si cerca un codice (es. 10294) i set con quel numero vanno in cima.
-  const codeMatch = (s) => (q && (norm(s.setNum) === q || norm(s.setNum).startsWith(q + "-")) ? 0 : 1);
+  // Se si cerca un codice, il set esatto e le sue versioni (10294-1, 10294-2…) vanno in cima.
+  const codeMatch = (s) => (!isCode ? 2 : s.setNum === q ? 0 : s.base === q ? 1 : 2);
   const sorters = {
-    year: (a, b) => (b.year || 0) - (a.year || 0) || a.setNum.localeCompare(b.setNum, "it", { numeric: true }),
-    yearAsc: (a, b) => (a.year || 0) - (b.year || 0) || a.setNum.localeCompare(b.setNum, "it", { numeric: true }),
-    name: (a, b) => a.name.localeCompare(b.name, "it"),
-    parts: (a, b) => (b.parts || 0) - (a.parts || 0),
+    year: (a, b) => (b.year || 0) - (a.year || 0) || a.codeRank - b.codeRank,
+    yearAsc: (a, b) => (a.year || 0) - (b.year || 0) || a.codeRank - b.codeRank,
+    name: (a, b) => a.nameRank - b.nameRank,
+    parts: (a, b) => (b.parts || 0) - (a.parts || 0) || a.codeRank - b.codeRank,
   };
   const sorter = sorters[f.sort] || sorters.year;
-  return list.sort((a, b) => codeMatch(a) - codeMatch(b) || sorter(a, b));
+  list.sort((a, b) => {
+    const ca = codeMatch(a), cb = codeMatch(b);
+    if (ca !== cb) return ca - cb;
+    return ca < 2 ? a.codeRank - b.codeRank : sorter(a, b);
+  });
+  filteredCache = { sig, list };
+  return list;
 }
 
 // ---------- Viste ----------
@@ -217,22 +246,26 @@ function renderCatalog() {
   const f = state.filters;
   const themeOpts = state.catalog.rootThemes
     .map((t) => `<option value="${t.id}" ${String(t.id) === f.theme ? "selected" : ""}>${esc(t.name)}</option>`).join("");
+  const subThemes = f.theme !== "" ? state.catalog.byTheme(state.catalog.children[f.theme] || []) : [];
+  const subOpts = subThemes
+    .map((t) => `<option value="${t.id}" ${String(t.id) === f.sub ? "selected" : ""}>${esc(t.name)}</option>`).join("");
   const statusOpts = [...STATUSES.map((s) => [s.id, s.label]), ["fav", "Preferiti ❤️"]]
     .map(([id, label]) => `<option value="${id}" ${id === f.status ? "selected" : ""}>${esc(label)}</option>`).join("");
-  const activeFilters = ["theme", "yearFrom", "yearTo", "partsMin", "partsMax", "status"].filter((k) => f[k] !== "").length;
 
   $("#view").innerHTML = `
     <div class="search-row">
-      <input type="search" id="q" placeholder="Cerca per nome o codice (es. 10294)" value="${esc(f.q)}" autocomplete="off" enterkeyhint="search">
-      <button class="btn" id="toggle-filters">Filtri${activeFilters ? ` (${activeFilters})` : ""}</button>
+      <input type="search" id="q" placeholder="Nome in inglese o codice (es. castle, 10294)" value="${esc(f.q)}" autocomplete="off" enterkeyhint="search">
+      <button class="btn" id="toggle-filters">${filterLabel()}</button>
     </div>
     <div class="filters" id="filters" ${state.showFilters ? "" : "hidden"}>
       <div class="wide"><label>Tema</label><select data-f="theme"><option value="">Tutti i temi</option>${themeOpts}</select></div>
+      ${subThemes.length ? `<div class="wide"><label>Sottotema</label><select data-f="sub"><option value="">Tutti i sottotemi</option>${subOpts}</select></div>` : ""}
       <div><label>Anno da</label><input type="number" inputmode="numeric" data-f="yearFrom" value="${esc(f.yearFrom)}" placeholder="es. 2010"></div>
       <div><label>Anno a</label><input type="number" inputmode="numeric" data-f="yearTo" value="${esc(f.yearTo)}" placeholder="es. 2024"></div>
       <div><label>Pezzi minimo</label><input type="number" inputmode="numeric" data-f="partsMin" value="${esc(f.partsMin)}"></div>
       <div><label>Pezzi massimo</label><input type="number" inputmode="numeric" data-f="partsMax" value="${esc(f.partsMax)}"></div>
       <div class="wide"><label>Stato nella mia collezione</label><select data-f="status"><option value="">Qualsiasi</option>${statusOpts}</select></div>
+      <label class="wide check"><input type="checkbox" id="only-parts" ${f.onlyParts ? "checked" : ""}> Nascondi libri, gadget e articoli senza pezzi</label>
       <div class="wide"><button class="btn full" id="reset-filters">Azzera filtri</button></div>
     </div>
     <div class="result-info">
@@ -253,62 +286,79 @@ function renderCatalog() {
   document.querySelectorAll("[data-f]").forEach((el) =>
     el.addEventListener(el.tagName === "SELECT" ? "change" : "input", debounce(() => {
       f[el.dataset.f] = el.value;
-      updateFilterButton();
+      if (el.dataset.f === "theme") { f.sub = ""; renderCatalog(); return; } // aggiorna l'elenco dei sottotemi
+      $("#toggle-filters").textContent = filterLabel();
       refresh();
     }, 250)));
+  $("#only-parts").addEventListener("change", (ev) => { f.onlyParts = ev.target.checked; refresh(); });
   $("#toggle-filters").addEventListener("click", () => {
     state.showFilters = !state.showFilters;
     $("#filters").hidden = !state.showFilters;
   });
   $("#reset-filters").addEventListener("click", () => {
-    Object.assign(f, { theme: "", yearFrom: "", yearTo: "", partsMin: "", partsMax: "", status: "" });
+    Object.assign(f, { theme: "", sub: "", yearFrom: "", yearTo: "", partsMin: "", partsMax: "", status: "", onlyParts: true });
     renderCatalog();
   });
   renderResults();
   window.scrollTo(0, state.catalogScroll);
 }
 
-function updateFilterButton() {
+function filterLabel() {
   const f = state.filters;
   const n = ["theme", "yearFrom", "yearTo", "partsMin", "partsMax", "status"].filter((k) => f[k] !== "").length;
-  $("#toggle-filters").textContent = `Filtri${n ? ` (${n})` : ""}`;
+  return `Filtri${n ? ` (${n})` : ""}`;
 }
 
-function renderResults() {
+let moreObserver = null;
+
+// Disegna la lista; con append=true aggiunge solo le righe nuove ("Mostra altri").
+function renderResults(append = false) {
   const list = filteredSets();
+  const results = $("#results");
+  if (!results) return;
   $("#count").textContent = list.length === 1 ? "1 set" : `${fmtNum(list.length)} set`;
+  if (moreObserver) { moreObserver.disconnect(); moreObserver = null; }
   if (!list.length) {
-    $("#results").innerHTML = `<li class="empty"><b>Nessun set trovato</b>Prova a cambiare la ricerca o i filtri.</li>`;
+    results.innerHTML = `<li class="empty"><b>Nessun set trovato</b>Prova a cambiare la ricerca o i filtri. I nomi dei set sono in inglese (es. "castle", "fire station").</li>`;
     $("#more").innerHTML = "";
     return;
   }
-  $("#results").innerHTML = list.slice(0, state.shown).map(setItem).join("");
+  const already = append ? results.children.length : 0;
+  const rows = list.slice(already, state.shown).map(setItem).join("");
+  if (append) results.insertAdjacentHTML("beforeend", rows);
+  else results.innerHTML = rows;
   if (list.length > state.shown) {
     $("#more").innerHTML = `<button class="btn full more">Mostra altri</button>`;
     const btn = $("#more button");
-    btn.addEventListener("click", () => { state.shown += PAGE; renderResults(); });
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) { io.disconnect(); state.shown += PAGE; renderResults(); }
+    const more = () => { state.shown += PAGE; renderResults(true); };
+    btn.addEventListener("click", more);
+    moreObserver = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) more();
     }, { rootMargin: "400px" });
-    io.observe(btn);
+    moreObserver.observe(btn);
   } else {
     $("#more").innerHTML = "";
   }
 }
 
 function renderDetail(setNum) {
-  const s = state.catalog.bySetNum.get(setNum);
-  setHeader(s ? s.setNum : setNum, "#/catalogo");
+  const found = state.catalog.bySetNum.get(setNum);
+  // Un set salvato in collezione ma tolto dal catalogo resta gestibile (stato, note…).
+  const s = found || { setNum, name: "Set non più presente nel catalogo", base: setNum.replace(/-\d+$/, ""), chain: [], img: "" };
+  setHeader(s.setNum, "#/catalogo");
   setTab("");
   window.scrollTo(0, 0);
-  if (!s) {
-    $("#view").innerHTML = `<div class="empty"><b>Set non trovato</b>Il codice ${esc(setNum)} non è nel catalogo.</div>`;
-    return;
-  }
   const e = entry(setNum);
-  const { theme, sub } = themePath(s.themeId);
-  const base = s.setNum.replace(/-\d+$/, "");
-  const variants = state.catalog.sets.filter((x) => x.setNum !== s.setNum && x.setNum.replace(/-\d+$/, "") === base);
+  const { theme, sub } = found ? themePath(s.themeId) : {};
+  const base = s.base;
+  const variants = found ? state.catalog.sets.filter((x) => x !== s && x.base === base) : [];
+  // Set correlati: stesso tema specifico, anni vicini (dato ricavato dal catalogo).
+  const related = found && s.themeId != null && s.year != null
+    ? state.catalog.sets
+        .filter((x) => x !== s && x.base !== base && x.themeId === s.themeId && x.year != null && Math.abs(x.year - s.year) <= 1 && x.parts)
+        .sort((a, b) => Math.abs(a.year - s.year) - Math.abs(b.year - s.year) || (b.parts || 0) - (a.parts || 0))
+        .slice(0, 8)
+    : [];
   const val = (v) => (v == null || v === "" ? NA : esc(v));
   const showDate = e.s === "built" || e.s === "apart" || e.d;
 
@@ -325,7 +375,7 @@ function renderDetail(setNum) {
       </div>
       <div class="field" id="date-field" ${showDate ? "" : "hidden"}>
         <label for="built-date">Data in cui l'ho costruito</label>
-        <input type="date" id="built-date" value="${esc(e.d || "")}">
+        <div class="search-row"><input type="date" id="built-date" value="${esc(e.d || "")}"><button class="btn" id="today" type="button">Oggi</button></div>
       </div>
       <div class="field">
         <label for="notes">Note</label>
@@ -335,6 +385,7 @@ function renderDetail(setNum) {
       <div class="saved" id="saved"></div>
     </div>
 
+    ${!found ? `<div class="warn">Questo set è nella tua collezione ma non è più nel catalogo di Rebrickable. Puoi comunque cambiare stato e note, o metterlo su "Non posseduto" per toglierlo.</div>` : ""}
     <div class="card">
       <h2>Dati del set</h2>
       <dl class="data">
@@ -354,7 +405,9 @@ function renderDetail(setNum) {
 
     ${s.figs ? `<div class="card"><h2>Minifigure</h2><div id="figs" class="muted small">Caricamento…</div></div>` : ""}
 
-    ${variants.length ? `<div class="card"><h2>Varianti</h2><ul class="list">${variants.map(setItem).join("")}</ul></div>` : ""}`;
+    ${variants.length ? `<div class="card"><h2>Varianti</h2><ul class="list">${variants.map(setItem).join("")}</ul></div>` : ""}
+
+    ${related.length ? `<div class="card"><h2>Set correlati</h2><p class="muted small">Stesso tema, usciti negli stessi anni.</p><ul class="list">${related.map(setItem).join("")}</ul></div>` : ""}`;
 
   const flash = () => {
     const el = $("#saved");
@@ -366,8 +419,7 @@ function renderDetail(setNum) {
   document.querySelectorAll(".status-btn").forEach((btn) => btn.addEventListener("click", () => {
     const st = btn.dataset.status;
     const changes = { s: st };
-    if (st === "built" && !entry(setNum).d) changes.d = todayLocal();
-    if (st === "none") changes.d = undefined;
+    if (["none", "wish", "owned"].includes(st)) changes.d = undefined; // non ancora costruito: niente data
     const ok = updateEntry(setNum, changes);
     document.querySelectorAll(".status-btn").forEach((b) => { b.className = "status-btn" + (b.dataset.status === st ? " on st-" + st : ""); });
     const cur = entry(setNum);
@@ -376,6 +428,10 @@ function renderDetail(setNum) {
     if (ok) flash();
   }));
   $("#built-date").addEventListener("change", (ev) => { if (updateEntry(setNum, { d: ev.target.value || undefined })) flash(); });
+  $("#today").addEventListener("click", () => {
+    $("#built-date").value = todayLocal();
+    if (updateEntry(setNum, { d: todayLocal() })) flash();
+  });
   // Le note si salvano mentre si scrive, quando si esce dal campo e se l'app viene chiusa.
   const notes = $("#notes");
   const saveNotes = () => {
@@ -402,7 +458,7 @@ function renderDetail(setNum) {
       if (!list.length) { el.innerHTML = NA; return; }
       el.classList.remove("muted", "small");
       el.innerHTML = `<ul class="figs">${list.map(([fig, qty]) => {
-        const [name, , img] = m.figs[fig] || [fig];
+        const [name, , img] = m.figs[fig] || [`Nome non disponibile (${fig})`];
         const src = imgUrl(img, m.imgBase);
         return `<li>${src ? `<img src="${esc(src)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : ""}<span>${qty > 1 ? qty + " × " : ""}${esc(name)}</span></li>`;
       }).join("")}</ul>`;
@@ -469,6 +525,7 @@ function renderBackup() {
       <p class="small">Scegli un file di backup salvato prima. La collezione attuale sarà sostituita da quella del file.</p>
       <input type="file" id="import" accept=".json,application/json" hidden>
       <button class="btn full" id="import-btn">Importa backup</button>
+      ${localStorage.getItem(PREV_KEY) ? `<button class="btn full" id="undo-import" style="margin-top:8px">Annulla l'ultimo import</button>` : ""}
     </div>
     <div class="card small muted">
       Catalogo: ${fmtNum(state.catalog.sets.length)} set, aggiornato il ${fmtDate(state.catalog.generated)}.<br>
@@ -477,6 +534,7 @@ function renderBackup() {
   $("#export").addEventListener("click", exportBackup);
   $("#import-btn").addEventListener("click", () => $("#import").click());
   $("#import").addEventListener("change", importBackup);
+  if ($("#undo-import")) $("#undo-import").addEventListener("click", undoImport);
 }
 
 async function exportBackup() {
@@ -502,22 +560,50 @@ async function exportBackup() {
   }
 }
 
+// Tiene solo le voci valide di un backup; null se il file non è un backup.
+function cleanCollection(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const out = {};
+  for (const [num, e] of Object.entries(raw)) {
+    if (!e || typeof e !== "object" || !STATUS_LABEL[e.s]) continue;
+    const clean = { s: e.s };
+    if (typeof e.d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(e.d)) clean.d = e.d;
+    if (typeof e.n === "string" && e.n.trim()) clean.n = e.n;
+    if (e.f === true) clean.f = true;
+    if (typeof e.u === "string") clean.u = e.u;
+    out[num] = clean;
+  }
+  return out;
+}
+
+function undoImport() {
+  let prev;
+  try { prev = cleanCollection(JSON.parse(localStorage.getItem(PREV_KEY))); } catch { prev = null; }
+  if (!prev || !confirm(`Tornare alla collezione di prima dell'ultimo import (${Object.keys(prev).length} set)?`)) return;
+  state.collection = prev;
+  state.collectionVersion++;
+  if (saveCollection()) localStorage.removeItem(PREV_KEY);
+  renderBackup();
+}
+
 async function importBackup(ev) {
   const file = ev.target.files[0];
   ev.target.value = "";
   if (!file) return;
-  try {
-    const data = JSON.parse(await file.text());
-    if (!data || typeof data.collezione !== "object") throw new Error("il file non è un backup di questa app");
-    const n = Object.keys(data.collezione).length;
-    if (!confirm(`Il backup del ${fmtDate(data.data)} contiene ${n} set. Sostituire la collezione attuale?`)) return;
-    state.collection = data.collezione;
-    saveCollection();
-    alert("Collezione recuperata!");
-    renderBackup();
-  } catch (err) {
-    alert("Non riesco a leggere il file: " + err.message);
+  let data;
+  try { data = JSON.parse(await file.text()); } catch { data = null; }
+  const collection = cleanCollection(data && data.collezione);
+  if (!collection) {
+    alert("Questo file non è un backup di questa app. Scegli il file \"backup-lego-…\" che avevi esportato.");
+    return;
   }
+  const n = Object.keys(collection).length;
+  if (!confirm(`Il backup del ${fmtDate(data.data) || "data sconosciuta"} contiene ${n} set. Sostituire la collezione attuale?`)) return;
+  try { localStorage.setItem(PREV_KEY, JSON.stringify(state.collection)); } catch {}
+  state.collection = collection;
+  state.collectionVersion++;
+  if (saveCollection()) alert("Collezione recuperata!");
+  renderBackup();
 }
 
 // ---------- Navigazione ----------

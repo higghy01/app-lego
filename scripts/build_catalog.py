@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 BASE_URL = "https://cdn.rebrickable.com/media/downloads/"
-FILES = ["themes", "sets", "inventories", "inventory_minifigs", "minifigs"]
+FILES = ["themes", "sets", "inventories", "inventory_minifigs", "inventory_sets", "minifigs"]
 IMG_PREFIX = "https://cdn.rebrickable.com/media/"
 
 csv.field_size_limit(sys.maxsize)
@@ -67,11 +67,36 @@ def build(out_dir, src=None):
             main_inv[inv["set_num"]] = (inv["id"], version)
     inv_to_set = {inv_id: set_num for set_num, (inv_id, _) in main_inv.items()}
 
-    set_figs = defaultdict(list)
+    own_figs = defaultdict(list)
     for row in data["inventory_minifigs"]:
         set_num = inv_to_set.get(row["inventory_id"])
         if set_num:
-            set_figs[set_num].append([row["fig_num"], to_int(row["quantity"]) or 1])
+            own_figs[set_num].append([row["fig_num"], to_int(row["quantity"]) or 1])
+
+    # Alcuni set (confezioni, collezioni) contengono altri set: le loro minifigure
+    # vanno contate insieme, moltiplicate per la quantita'.
+    sub_sets = defaultdict(list)
+    for row in data["inventory_sets"]:
+        set_num = inv_to_set.get(row["inventory_id"])
+        if set_num:
+            sub_sets[set_num].append((row["set_num"], to_int(row["quantity"]) or 1))
+
+    def all_figs(set_num, seen=()):
+        totals = defaultdict(int)
+        for fig, qty in own_figs.get(set_num, []):
+            totals[fig] += qty
+        for sub, qty in sub_sets.get(set_num, []):
+            if sub in seen:
+                continue
+            for fig, sub_qty in all_figs(sub, seen + (set_num,)).items():
+                totals[fig] += sub_qty * qty
+        return totals
+
+    set_figs = {}
+    for set_num in main_inv:
+        totals = all_figs(set_num)
+        if totals:
+            set_figs[set_num] = [[fig, qty] for fig, qty in totals.items()]
 
     used_figs = {fig for figs in set_figs.values() for fig, _ in figs}
     figs = {m["fig_num"]: [m["name"], to_int(m["num_parts"]), short_img(m["img_url"])]
@@ -92,7 +117,7 @@ def build(out_dir, src=None):
                "fields": ["set_num", "name", "year", "theme_id", "num_parts", "img", "num_minifigs"],
                "themes": themes, "sets": sets}
     minifigs = {"generated": generated, "imgBase": IMG_PREFIX,
-                "figs": figs, "sets": dict(set_figs)}
+                "figs": figs, "sets": set_figs}
     for name, obj in (("catalog.json", catalog), ("minifigs.json", minifigs)):
         (out / name).write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")),
                                 encoding="utf-8")
