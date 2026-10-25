@@ -330,3 +330,115 @@ li.empty { list-style: none; }
 .stat b { display: block; font-size: 21px; font-weight: 800; }
 .stat span { font-size: 12px; color: var(--muted); }
 #value-note:empty { display: none; }
+
+/* ---------- Tema LEGO vivace ---------- */
+:root {
+  --bg: #ffd500;                 /* giallo LEGO */
+  --on-bg: #1d1b19;              /* testo scritto direttamente sullo sfondo */
+  --on-bg-muted: #5c4a00;
+  --on-bg-link: #005293;
+  --stud: rgba(255, 255, 255, .2);
+  --stud-edge: rgba(150, 110, 0, .1);
+  --lego-blue: #006cb7;
+  --lego-green: #00852b;
+  --lego-orange: #e8680c;
+  --lego-purple: #7b3fc4;
+  --brick: 0 3px 0;              /* bordo inferiore "a mattoncino" */
+  --st-wish: #b35c00;
+  --st-owned: #006cb7;
+  --st-built: #00852b;
+  --chip-on: var(--lego-blue);
+  --chip-on-text: #fff;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d2240;               /* blu notte */
+    --card: #163156;
+    --card-2: #1f3d66;
+    --line: #2d4d78;
+    --text: #f4f6fb;
+    --muted: #a9b8cc;
+    --on-bg: #f4f6fb;
+    --on-bg-muted: #a9b8cc;
+    --on-bg-link: #7cc0ff;
+    --accent: #7cc0ff;
+    --stud: rgba(255, 255, 255, .035);
+    --stud-edge: rgba(0, 0, 0, .18);
+    --shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 4px 14px rgba(0, 0, 0, .25);
+    --st-none: #6f6b66;          /* scritte bianche leggibili anche sui colori degli stati */
+    --st-wish: #b8620a;
+    --st-owned: #1f74c4;
+    --st-building: #8a52d6;
+    --st-built: #1c8a3e;
+    --st-apart: #b8443c;
+    --chip-on: var(--yellow);
+    --chip-on-text: #1d1b19;
+  }
+}
+
+/* Sfondo con i bottoncini del mattoncino */
+body {
+  background-color: var(--bg);
+  background-image: radial-gradient(circle, var(--stud) 0 7px, var(--stud-edge) 7.5px 9px, transparent 9.5px);
+  background-size: 30px 30px;
+  background-position: 0 0;
+}
+#view > .muted, #view > p, .result-info, .empty, .set-title { color: var(--on-bg); }
+#view > .muted, #view > p.muted, .result-info, .empty { color: var(--on-bg-muted); }
+.empty b { color: var(--on-bg); }
+.empty a, #view > p a { color: var(--on-bg-link); font-weight: 700; }
+
+/* Barra in alto rossa con una riga gialla, come una fila di mattoncini */
+.top { box-shadow: 0 4px 0 var(--yellow), 0 6px 14px rgba(0, 0, 0, .18); }
+@media (prefers-color-scheme: dark) { .top { box-shadow: 0 4px 0 var(--yellow), 0 6px 14px rgba(0, 0, 0, .4); } }
+main { padding-top: 20px; }
+
+/* Menu in basso: ogni scheda attiva ha il suo colore LEGO */
+.tabs a.active { color: var(--text); font-weight: 800; }
+.tabs a.active span { background: var(--tab-c, var(--red)); color: #fff; box-shadow: var(--brick) color-mix(in srgb, var(--tab-c, var(--red)) 70%, #000); }
+.tabs a[data-tab=catalogo] { --tab-c: var(--red); }
+.tabs a[data-tab=scansiona] { --tab-c: var(--lego-blue); }
+.tabs a[data-tab=collezione] { --tab-c: var(--lego-green); }
+.tabs a[data-tab=desideri] { --tab-c: var(--yellow); }
+.tabs a[data-tab=desideri].active span { color: #1d1b19; }
+.tabs a[data-tab=backup] { --tab-c: var(--lego-purple); }
+
+/* Pulsanti a forma di mattoncino */
+.btn { box-shadow: var(--brick) var(--line); }
+.btn.primary { box-shadow: var(--brick) var(--red-dark), 0 4px 12px color-mix(in srgb, var(--red) 30%, transparent); }
+.btn:active, .btn.primary:active { box-shadow: 0 1px 0 var(--red-dark); transform: translateY(2px); }
+.btn:not(.primary):active { box-shadow: 0 1px 0 var(--line); }
+
+/* Filtri rapidi (chip) */
+.chip { box-shadow: var(--brick) var(--line); }
+.chip.on { background: var(--chip-on); color: var(--chip-on-text); border-color: var(--chip-on); box-shadow: var(--brick) color-mix(in srgb, var(--chip-on) 70%, #000); }
+
+/* Stati della collezione: colorati anche quando non sono scelti */
+.status-btn { background: color-mix(in srgb, var(--c, var(--st-none)) 12%, var(--card)); border-color: color-mix(in srgb, var(--c, var(--st-none)) 35%, var(--card)); }
+.status-btn.on { background: var(--c, var(--st-none)); border-color: transparent; box-shadow: var(--brick) color-mix(in srgb, var(--c, #000) 65%, #000), 0 4px 12px color-mix(in srgb, var(--c, #000) 30%, transparent); }
+
+/* Titoli delle schede con un piccolo mattoncino rosso */
+.card h2::before {
+  content: ""; display: inline-block; width: 20px; height: 14px; margin-right: 8px; vertical-align: -1px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 14'%3E%3Cg fill='%23da291c'%3E%3Crect y='4' width='20' height='10' rx='2'/%3E%3Crect x='2.5' width='5' height='5' rx='1.2'/%3E%3Crect x='12.5' width='5' height='5' rx='1.2'/%3E%3C/g%3E%3C/svg%3E") no-repeat center / contain;
+}
+
+/* Statistiche: un mattoncino di colore diverso per ogni numero */
+.stat { color: #fff; box-shadow: var(--brick) color-mix(in srgb, var(--s) 70%, #000); background: var(--s); }
+.stat span { color: rgba(255, 255, 255, .92); font-weight: 600; }
+.stat .na { color: rgba(255, 255, 255, .92); }
+.stat:nth-child(6n+1) { --s: var(--red); }
+.stat:nth-child(6n+2) { --s: var(--lego-blue); }
+.stat:nth-child(6n+3) { --s: var(--lego-green); }
+.stat:nth-child(6n+4) { --s: var(--yellow); color: #1d1b19; }
+.stat:nth-child(6n+4) span, .stat:nth-child(6n+4) .na { color: #3d3000; }
+.stat:nth-child(6n+5) { --s: var(--lego-purple); }
+.stat:nth-child(6n+6) { --s: var(--lego-orange); color: #1d1b19; }
+.stat:nth-child(6n+6) span, .stat:nth-child(6n+6) .na { color: #2a1400; }
+
+/* Avvisi: su sfondo giallo diventano bianchi con un bordo giallo scuro */
+.install-hint { background: #fff; border-bottom: 3px solid #e0b800; margin-top: 4px; }
+.warn { border-left: 5px solid #e0b800; }
+@media (prefers-color-scheme: dark) {
+  .install-hint { background: #3a3110; border-bottom-color: #8a7000; }
+}
