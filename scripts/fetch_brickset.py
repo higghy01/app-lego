@@ -1,29 +1,43 @@
-"""Scarica da Brickset codici a barre, eta', prezzi e valutazioni dei set.
+"""Scarica da Brickset codici a barre, eta', prezzi, date di uscita, descrizioni e foto dei set.
 
 Brickset limita le chiamate giornaliere, quindi lo script lavora un po' alla
 volta: ogni volta aggiorna gli anni piu' recenti e quelli non ancora scaricati
-(o scaricati da piu' tempo), e salva tutto in data-src/brickset.json.
+(o scaricati da piu' tempo). Salva in data-src/:
+- brickset.json: dati brevi di ogni set (servono all'app subito);
+- brickset-testi.json: descrizione e tag (l'app li carica solo aprendo la scheda);
+- brickset-foto.json: le foto in piu' di ogni set, la scatola per prima.
+Le foto si chiedono con getAdditionalImages, che non conta nel limite di getSets:
+qualche centinaio al giorno, partendo dai set piu' nuovi.
 
-Uso: BRICKSET_API_KEY=... python scripts/fetch_brickset.py [--max-calls 60]
+Uso: BRICKSET_API_KEY=... python scripts/fetch_brickset.py [--max-calls 60] [--max-images 300]
 """
 import argparse
 import json
 import os
+import re
 import sys
+from html.parser import HTMLParser
 import urllib.parse
 import urllib.request
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-API = "https://brickset.com/api/v3.asmx/getSets"
-OUT = Path(__file__).resolve().parent.parent / "data-src" / "brickset.json"
+API = "https://brickset.com/api/v3.asmx/"
+DATA = Path(__file__).resolve().parent.parent / "data-src"
+OUT = DATA / "brickset.json"
+TEXTS = DATA / "brickset-testi.json"
+PHOTOS = DATA / "brickset-foto.json"
 FIRST_YEAR = 1949
 PAGE_SIZE = 500
+IMG_PREFIX = "https://images.brickset.com/sets/"
+PHOTOS_REFRESH_DAYS = 30  # i set appena usciti ricevono foto nuove: si ricontrollano dopo un mese
 
 
-def call(key, params):
-    query = urllib.parse.urlencode({"apiKey": key, "userHash": "", "params": json.dumps(params)})
-    req = urllib.request.Request(f"{API}?{query}", headers={"User-Agent": "app-lego-catalog/1.0"})
+def call(key, params, method="getSets"):
+    if method == "getSets":
+        params = {"userHash": "", "params": json.dumps(params)}
+    query = urllib.parse.urlencode({"apiKey": key, **params})
+    req = urllib.request.Request(f"{API}{method}?{query}", headers={"User-Agent": "app-lego-catalog/1.0"})
     with urllib.request.urlopen(req, timeout=60) as resp:
         data = json.loads(resp.read().decode("utf-8"))
     if data.get("status") != "success":
@@ -54,37 +68,150 @@ def compact(s):
         out["instr"] = s["instructionsCount"]
     if s.get("bricksetURL"):
         out["url"] = s["bricksetURL"]
+    if s.get("setID"):
+        out["id"] = s["setID"]
+    for field, name in (("launchDate", "launch"), ("exitDate", "exit")):
+        if s.get(field):
+            out[name] = str(s[field])[:10]  # solo AAAA-MM-GG
+    if s.get("availability"):
+        out["avail"] = s["availability"]
+    if is_build_together(tags_of(s)):
+        out["bt"] = True
+    if s.get("additionalImageCount"):
+        out["nimg"] = s["additionalImageCount"]
     return out
 
 
+def tags_of(s):
+    return [str(t).strip() for t in ((s.get("extendedData") or {}).get("tags") or []) if str(t).strip()]
+
+
+def is_build_together(tags):
+    # Il nome del tag su Brickset puo' cambiare un po' (spazi, trattini, maiuscole).
+    return any(re.sub(r"[^a-z]", "", t.lower()) == "buildtogether" for t in tags)
+
+
+class _Text(HTMLParser):
+    BREAKS = {"p", "br", "li", "div", "h1", "h2", "h3", "h4", "ul", "ol"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self.BREAKS:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag):
+        self.handle_starttag(tag, [])
+
+    def handle_data(self, data):
+        self.parts.append(data)
+
+
+def plain_text(html):
+    """La descrizione arriva in HTML: teniamo solo il testo, a paragrafi."""
+    parser = _Text()
+    parser.feed(html)
+    parser.close()
+    lines = (re.sub(r"\s+", " ", line).strip() for line in "".join(parser.parts).split("\n"))
+    return "\n".join(line for line in lines if line)
+
+
+def texts_of(s):
+    out = {}
+    description = plain_text((s.get("extendedData") or {}).get("description") or "")
+    if description:
+        out["desc"] = description
+    tags = tags_of(s)
+    if tags:
+        out["tags"] = tags
+    return out
+
+
+def short_img(url):
+    url = (url or "").strip()
+    return url[len(IMG_PREFIX):] if url.startswith(IMG_PREFIX) else url
+
+
+def order_photos(images):
+    """La foto della scatola (nome file con "Box1") va per prima, poi le altre come le da' Brickset."""
+    def is_box(img):
+        return 0 if "box1" in img[0].rsplit("/", 1)[-1].lower() else 1
+    return sorted(images, key=is_box)
+
+
 def fetch_year(key, year, budget):
-    sets, page, calls = {}, 1, 0
+    sets, texts, page, calls = {}, {}, 1, 0
     while True:
         if calls >= budget:
-            return None, calls  # anno non completato: si riprova la prossima volta
-        data = call(key, {"year": str(year), "pageSize": PAGE_SIZE, "pageNumber": page})
+            return None, None, calls  # anno non completato: si riprova la prossima volta
+        # extendedData aggiunge descrizione e tag alle stesse chiamate di prima.
+        data = call(key, {"year": str(year), "pageSize": PAGE_SIZE, "pageNumber": page, "extendedData": 1})
         calls += 1
         for s in data.get("sets") or []:
             set_num = f"{s['number']}-{s.get('numberVariant') or 1}"
             info = compact(s)
             if info:
                 sets[set_num] = info
+            text = texts_of(s)
+            if text:
+                texts[set_num] = text
         if len(data.get("sets") or []) < PAGE_SIZE:
-            return sets, calls
+            return sets, texts, calls
         page += 1
+
+
+def photos_todo(years, photos, today):
+    """Set con foto in piu' da chiedere: prima i mai chiesti, i piu' nuovi in testa."""
+    never, stale = [], []
+    for year, info in years.items():
+        for set_num, s in info["sets"].items():
+            if not s.get("id") or not s.get("nimg"):
+                continue
+            key = (s.get("launch") or year, set_num)
+            done = photos.get(set_num)
+            if done is None:
+                never.append(key)
+            elif done.get("nimg") != s["nimg"] or (
+                    int(year) >= today.year - 1
+                    and (today - date.fromisoformat(done["fetched"])).days >= PHOTOS_REFRESH_DAYS):
+                stale.append((done["fetched"], set_num))
+    never.sort(reverse=True)
+    stale.sort()
+    return [n for _, n in never] + [n for _, n in stale]
+
+
+def fetch_photos(key, years, photos, budget, today):
+    by_num = {n: s for info in years.values() for n, s in info["sets"].items()}
+    done = 0
+    for set_num in photos_todo(years, photos, today)[:budget]:
+        s = by_num[set_num]
+        data = call(key, {"setID": s["id"]}, method="getAdditionalImages")
+        images = [[short_img(i.get("imageURL")), short_img(i.get("thumbnailURL"))]
+                  for i in data.get("additionalImages") or [] if i.get("imageURL")]
+        photos[set_num] = {"fetched": today.isoformat(), "nimg": s["nimg"], "imgs": order_photos(images)}
+        done += 1
+    return done
+
+
+def load(path, field):
+    return json.loads(path.read_text(encoding="utf-8"))[field] if path.exists() else {}
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--max-calls", type=int, default=60)
+    parser.add_argument("--max-images", type=int, default=300)
     args = parser.parse_args()
     key = os.environ.get("BRICKSET_API_KEY", "").strip()
     if not key:
         print("Nessuna chiave Brickset: salto l'aggiornamento.")
         return
 
-    state = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {"years": {}}
-    years = state["years"]
+    years = load(OUT, "years")
+    texts = load(TEXTS, "years")
+    photos = load(PHOTOS, "sets")
     this_year = date.today().year
     all_years = [str(y) for y in range(FIRST_YEAR, this_year + 2)]
     recent = [str(this_year + 1), str(this_year), str(this_year - 1)]
@@ -93,31 +220,51 @@ def main():
                     key=lambda y: years[y]["fetched"])
     todo = recent + missing + oldest
 
-    budget, done = args.max_calls, []
+    budget, done, n_photos = args.max_calls, [], 0
+    today = datetime.now(timezone.utc).date()
+    error = None
     try:
         for year in todo:
             if budget <= 0:
                 break
-            sets, calls = fetch_year(key, year, budget)
+            sets, year_texts, calls = fetch_year(key, year, budget)
             budget -= calls
             if sets is None:
                 break
-            years[year] = {"fetched": datetime.now(timezone.utc).strftime("%Y-%m-%d"), "sets": sets}
+            years[year] = {"fetched": today.isoformat(), "sets": sets}
+            texts[year] = {"fetched": today.isoformat(), "sets": year_texts}
             done.append(year)
+    except Exception as err:  # noqa: BLE001 - se getSets e' finito, le foto si chiedono lo stesso
+        error = err
+    try:
+        n_photos = fetch_photos(key, years, photos, args.max_images, today)
     finally:
-        save(years, done)  # anche se Brickset si ferma a meta', quanto scaricato resta
+        save(years, texts, photos, done, n_photos)  # anche se Brickset si ferma a meta', quanto scaricato resta
+    if error:
+        raise error
 
 
-def save(years, done):
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    # Una riga per anno: le modifiche restano piccole e leggibili.
-    lines = ",\n".join(f"{json.dumps(y)}:{json.dumps(years[y], ensure_ascii=False, sort_keys=True, separators=(',', ':'))}"
-                       for y in sorted(years))
-    OUT.write_text('{"years":{\n' + lines + "\n}}\n", encoding="utf-8")
-    total = sum(len(v["sets"]) for v in years.values())
-    print(f"Anni aggiornati: {', '.join(done) or 'nessuno'}. Anni salvati: {len(years)}. Set con dati Brickset: {total}.")
+def write_lines(path, field, items):
+    # Una riga per anno (o per set): le modifiche restano piccole e leggibili.
+    lines = ",\n".join(f"{json.dumps(k)}:{json.dumps(items[k], ensure_ascii=False, sort_keys=True, separators=(',', ':'))}"
+                       for k in sorted(items))
+    path.write_text(f'{{"{field}":{{\n' + lines + "\n}}\n", encoding="utf-8")
+
+
+def save(years, texts, photos, done, n_photos):
+    DATA.mkdir(parents=True, exist_ok=True)
+    write_lines(OUT, "years", years)
+    write_lines(TEXTS, "years", texts)
+    write_lines(PHOTOS, "sets", photos)
+    all_sets = [s for v in years.values() for s in v["sets"].values()]
+    n_bt = sum(1 for s in all_sets if s.get("bt"))
+    n_desc = sum(1 for v in texts.values() for t in v["sets"].values() if t.get("desc"))
+    summary = (f"Anni aggiornati: {', '.join(done) or 'nessuno'}. Anni salvati: {len(years)}. "
+               f"Set con dati Brickset: {len(all_sets)}. Con descrizione: {n_desc}. "
+               f"Costruisci insieme: {n_bt}. Foto chieste oggi: {n_photos}, set con foto: {len(photos)}.")
+    print(summary)
     if os.environ.get("GITHUB_ACTIONS"):
-        print(f"::notice title=Brickset::Anni aggiornati: {len(done)}, anni salvati: {len(years)}, set con dati: {total}")
+        print(f"::notice title=Brickset::{summary}")
 
 
 if __name__ == "__main__":
