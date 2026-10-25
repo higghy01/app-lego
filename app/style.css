@@ -442,3 +442,36 @@ main { padding-top: 20px; }
 @media (prefers-color-scheme: dark) {
   .install-hint { background: #3a3110; border-bottom-color: #8a7000; }
 }
+
+/* ---------- Temi (categorie) ---------- */
+.tabs a[data-tab=temi] { --tab-c: var(--lego-orange); }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 600px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.tile {
+  display: flex; flex-direction: column; background: var(--card); color: inherit; text-decoration: none;
+  border-radius: var(--radius); padding: 8px 8px 10px; box-shadow: var(--brick) var(--line), var(--shadow);
+  transition: transform .12s;
+}
+.tile:active { transform: scale(.97); }
+.tile-img {
+  width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: #fff; border-radius: 10px;
+  display: block; padding: 6px; font-size: 11px; color: #9a948d; text-align: center;
+}
+div.tile-img { background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 44' fill='%23e6e2db'%3E%3Crect x='4' y='14' width='56' height='28' rx='3'/%3E%3Crect x='10' y='6' width='12' height='10' rx='2'/%3E%3Crect x='26' y='6' width='12' height='10' rx='2'/%3E%3Crect x='42' y='6' width='12' height='10' rx='2'/%3E%3C/svg%3E") no-repeat center / 40px; }
+.tile-name { font-weight: 800; font-size: 15px; line-height: 1.2; margin: 8px 2px 0; overflow-wrap: anywhere; }
+.tile-count { font-size: 12.5px; color: var(--muted); margin: 2px 2px 0; }
+.old-themes { margin-top: 18px; }
+.old-themes summary {
+  cursor: pointer; font-weight: 700; padding: 12px 14px; border-radius: var(--radius-sm);
+  background: var(--card); box-shadow: var(--brick) var(--line); margin-bottom: 12px;
+}
+.item.compact { min-height: 58px; padding: 10px 14px; }
+#theme-sub { margin-bottom: 2px; }
+
+/* Etichette "Nuovo" e "In arrivo" */
+.rel {
+  display: inline-block; font-size: 11.5px; font-weight: 800; letter-spacing: .02em; text-transform: uppercase;
+  border-radius: 6px; padding: 2px 7px; margin-bottom: 4px;
+}
+.rel-new { background: var(--red); color: #fff; box-shadow: 0 2px 0 var(--red-dark); }
+.rel-soon { background: var(--yellow); color: #1d1b19; box-shadow: 0 2px 0 #b89500; }
