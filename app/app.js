@@ -38,7 +38,8 @@ const state = {
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const norm = (s) => String(s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-const fmtNum = (n) => (n == null ? null : n.toLocaleString("it-IT"));
+// In italiano anche 4 cifre col punto (1.530): "de-DE" usa gli stessi separatori ma raggruppa sempre.
+const fmtNum = (n) => (n == null ? null : n.toLocaleString("de-DE"));
 const fmtDate = (iso) => {
   const d = iso ? new Date(iso) : null;
   return d && !isNaN(d) ? d.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" }) : "";
@@ -181,7 +182,7 @@ async function shrinkPhoto(file) {
     const img = await new Promise((resolve, reject) => {
       const el = new Image();
       el.onload = () => resolve(el);
-      el.onerror = () => reject(new Error("immagine non leggibile"));
+      el.onerror = () => reject(Object.assign(new Error("immagine non leggibile"), { notImage: true }));
       el.src = url;
     });
     const scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
@@ -282,7 +283,7 @@ const PRICE_PLACES = [["DE", "€", "prezzo LEGO in Germania"], ["UK", "£", "pr
 function fmtPrice(prices) {
   if (!prices) return NA;
   const rows = PRICE_PLACES.filter(([c]) => prices[c])
-    .map(([c, sym, label]) => `${esc(prices[c].toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }))} ${sym} <span class="muted small">(${label})</span>`);
+    .map(([c, sym, label]) => `${esc(prices[c].toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }))} ${sym} <span class="muted small">(${label})</span>`);
   return rows.length ? rows.join("<br>") : NA;
 }
 
@@ -657,11 +658,14 @@ async function setupPhotos(setNum) {
     try {
       const blob = await shrinkPhoto(file);
       await putPhoto({ id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`, set: setNum, date: new Date().toISOString(), blob });
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
       await draw();
       msg.textContent = "✓ Foto salvata. Ricordati ogni tanto di fare il Backup.";
     } catch (err) {
       msg.textContent = "";
-      alert("Non sono riuscito a salvare la foto (memoria del telefono piena?). Riprova con un'altra foto.");
+      alert(err && err.notImage
+        ? "Questo file non è una foto che riesco ad aprire. Scegli un'altra foto."
+        : "Non sono riuscito a salvare la foto (memoria del telefono piena?). Riprova con un'altra foto.");
     }
   });
   await draw();
@@ -819,7 +823,9 @@ async function handleCode(text, typed) {
 }
 
 function collectionList(filter) {
-  return Object.entries(state.collection)
+  // Anche i set con foto ma senza stato (es. "Non posseduto") compaiono in "Con foto".
+  const nums = new Set([...Object.keys(state.collection), ...Object.keys(state.photoCounts)]);
+  return [...nums].map((num) => [num, entry(num)])
     .filter(([num, e]) => filter(e, num))
     .map(([num, e]) => ({ set: state.catalog.bySetNum.get(num) || { setNum: num, name: "(set non più nel catalogo)", img: "" }, e }))
     .sort((a, b) => (b.e.u || "").localeCompare(a.e.u || ""))
@@ -900,7 +906,7 @@ async function fillValue() {
     if (eur) { total += eur; priced++; }
   }
   if (!priced) { show(NA, "Per ora non c'è il prezzo di listino di nessuno dei tuoi set."); return; }
-  show(`${Math.round(total).toLocaleString("it-IT")} €`,
+  show(`${fmtNum(Math.round(total))} €`,
     `Valore indicativo = somma dei prezzi di listino originali in euro (prezzo LEGO in Germania, da Brickset). ` +
     (priced < owned.length ? `Calcolato su ${priced} set su ${owned.length}: per gli altri il prezzo non è disponibile.` : `Calcolato su tutti i ${priced} set posseduti.`));
 }
@@ -924,7 +930,7 @@ function renderBackup() {
       <h2>Salva una copia della collezione</h2>
       <p class="small">La collezione è salvata su questo telefono. Ogni tanto salva una copia (per esempio in iCloud Drive o mandala a te stessa via email): se cambi telefono o cancelli l'app, potrai recuperare tutto.</p>
       <p class="small muted">Set nella collezione: ${count}. Foto: <span id="backup-photos">…</span>. Ultimo backup: ${last ? fmtDate(last) : "mai"}.</p>
-      <p class="small muted">Le tue foto sono dentro il backup: con molte foto il file diventa grande (circa 0,3 MB per foto).</p>
+      <p class="small muted">Le tue foto sono dentro il backup: con molte foto il file diventa grande (circa mezzo MB per foto).</p>
       <button class="btn primary full" id="export">Esporta backup</button>
     </div>
     <div class="card">
@@ -942,24 +948,37 @@ function renderBackup() {
   $("#import-btn").addEventListener("click", () => $("#import").click());
   $("#import").addEventListener("change", importBackup);
   if ($("#undo-import")) $("#undo-import").addEventListener("click", undoImport);
+  prepareBackupPhotos();
   loadPhotoCounts().then((c) => {
     if ($("#backup-photos")) $("#backup-photos").textContent = Object.values(c).reduce((a, b) => a + b, 0);
   });
 }
 
-async function exportBackup() {
+// Le foto si preparano appena si apre la scheda Backup: così al tocco di "Esporta"
+// la condivisione parte subito (su iPhone, se si aspetta troppo, Safari la blocca).
+let backupPhotos = null; // { foto: [...] } oppure { error: true }
+
+async function prepareBackupPhotos() {
   const btn = $("#export");
-  let foto = [];
+  backupPhotos = null;
+  btn.disabled = true;
+  btn.textContent = "Preparo il backup…";
   try {
-    btn.disabled = true;
-    btn.textContent = "Preparo il backup…";
+    const foto = [];
     for (const p of await allPhotos()) foto.push({ id: p.id, set: p.set, data: p.date, img: await blobToDataUrl(p.blob) });
-  } catch (err) {
-    if (!confirm("Non riesco a leggere le foto. Vuoi fare lo stesso il backup, ma senza foto?")) { renderBackup(); return; }
-    foto = [];
+    backupPhotos = { foto };
+  } catch {
+    backupPhotos = { error: true };
   }
+  if (!document.body.contains(btn)) return;
   btn.disabled = false;
   btn.textContent = "Esporta backup";
+}
+
+async function exportBackup() {
+  if (!backupPhotos) return;
+  if (backupPhotos.error && !confirm("Non riesco a leggere le foto. Vuoi fare lo stesso il backup, ma senza foto?")) return;
+  const foto = backupPhotos.foto || [];
   const data = { app: "i-miei-lego", versione: 2, data: new Date().toISOString(), collezione: state.collection, foto };
   const name = `backup-lego-${new Date().toISOString().slice(0, 10)}.json`;
   const file = new File([JSON.stringify(data, null, 1)], name, { type: "application/json" });
@@ -1022,18 +1041,18 @@ async function importBackup(ev) {
   const n = Object.keys(collection).length;
   const photos = Array.isArray(data.foto) ? data.foto.filter((p) => p && typeof p.id === "string" && typeof p.set === "string" && typeof p.img === "string") : [];
   const withPhotos = photos.length ? ` e ${photos.length} foto` : "";
-  if (!confirm(`Il backup del ${fmtDate(data.data) || "data sconosciuta"} contiene ${n} set${withPhotos}. Sostituire la collezione attuale?`)) return;
+  if (!confirm(`Il backup del ${fmtDate(data.data) || "data sconosciuta"} contiene ${n} set${withPhotos}. Sostituire la collezione attuale?${photos.length ? "\n\nLe foto vengono aggiunte a quelle già presenti (nessuna foto viene cancellata, nemmeno con \"Annulla l'ultimo import\")." : ""}`)) return;
   // Le foto del backup si aggiungono a quelle già sul telefono: nessuna foto viene cancellata.
   let photoErrors = 0;
   for (const p of photos) {
-    const blob = dataUrlToBlob(p.img);
     try {
+      const blob = dataUrlToBlob(p.img);
       if (!blob) throw new Error("foto non valida");
       await putPhoto({ id: p.id, set: p.set, date: typeof p.data === "string" ? p.data : new Date().toISOString(), blob });
     } catch { photoErrors++; }
   }
   await loadPhotoCounts();
-  if (photoErrors) alert(`Attenzione: ${photoErrors} foto non sono state recuperate (memoria del telefono piena?).`);
+  if (photoErrors) alert(`Attenzione: ${photoErrors} foto non sono state recuperate (file rovinato o memoria del telefono piena).`);
   try { localStorage.setItem(PREV_KEY, JSON.stringify(state.collection)); } catch {}
   state.collection = collection;
   state.collectionVersion++;
