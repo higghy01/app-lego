@@ -404,8 +404,8 @@ function setItem(s) {
   const meta = [s.setNum, s.year, s.parts != null ? `${fmtNum(s.parts)} pezzi` : null].filter(Boolean).join(" · ");
   const badge = e.s !== "none" ? `<span class="badge st-${e.s}">${esc(STATUS_LABEL[e.s])}</span>` : "";
   return `<li><a class="item" href="#/set/${encodeURIComponent(s.setNum)}">
-    ${imgTag(s, "thumb")}
-    <div class="info"><div class="name">${esc(s.name)}</div><div class="meta">${esc(meta)}</div>${badge}${e.v ? `<span class="stars-small" aria-label="Voto ${e.v} su 5">${starText(e.v)}</span>` : ""}</div>
+    ${listImg(s)}
+    <div class="info">${releaseBadge(s)}<div class="name">${esc(s.name)}</div><div class="meta">${esc(meta)}</div>${badge}${e.v ? `<span class="stars-small" aria-label="Voto ${e.v} su 5">${starText(e.v)}</span>` : ""}</div>
     ${state.photoCounts[s.setNum] ? '<span class="fav" title="Ha foto">📷</span>' : ""}${e.f ? '<span class="fav">❤️</span>' : ""}
   </a></li>`;
 }
@@ -511,6 +511,168 @@ function renderResults(append = false) {
     $("#more").innerHTML = `<button class="btn full more">Mostra altri</button>`;
     const btn = $("#more button");
     const more = () => { state.shown += PAGE; renderResults(true); };
+    btn.addEventListener("click", more);
+    moreObserver = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) more();
+    }, { rootMargin: "400px" });
+    moreObserver.observe(btn);
+  } else {
+    $("#more").innerHTML = "";
+  }
+}
+
+// ---------- Temi (categorie) ----------
+
+const NEW_DAYS = 60; // un set è "Nuovo" per 60 giorni dalla data di uscita
+const RECENT_YEARS = 3; // i temi con set usciti negli ultimi anni sono quelli "di oggi"
+const NOT_BUILDING = ["Gear", "Books"]; // portachiavi, libri…: in fondo, tra gli altri temi
+
+// Data di uscita da Brickset (AAAA-MM-GG); se manca si usa solo l'anno.
+function launchOf(s) {
+  return state.extra?.sets[s.setNum]?.launch || null;
+}
+
+// "new" = uscito da poco, "soon" = non ancora in vendita, null = niente etichetta.
+function releaseTag(s) {
+  const launch = launchOf(s);
+  const today = todayLocal();
+  if (launch) {
+    if (launch > today) return "soon";
+    const days = (new Date(today) - new Date(launch)) / 86400000;
+    return days <= NEW_DAYS ? "new" : null;
+  }
+  // Senza data precisa: in arrivo solo se l'anno è già oltre quello in corso.
+  return s.year != null && s.year > new Date().getFullYear() ? "soon" : null;
+}
+
+function releaseBadge(s) {
+  const tag = releaseTag(s);
+  if (tag === "new") return '<span class="rel rel-new">Nuovo</span>';
+  if (tag === "soon") {
+    const launch = launchOf(s);
+    return `<span class="rel rel-soon">In arrivo${launch ? ` · ${esc(fmtDate(launch))}` : ""}</span>`;
+  }
+  return "";
+}
+
+// Chiave per ordinare dal più nuovo: la data se c'è, altrimenti l'anno (va dopo i set datati dello stesso anno).
+function releaseKey(s) {
+  return launchOf(s) || (s.year != null ? `${s.year}-00-00` : "0000");
+}
+
+const byRelease = (a, b) => (releaseKey(a) < releaseKey(b) ? 1 : releaseKey(a) > releaseKey(b) ? -1 : b.codeRank - a.codeRank);
+
+// Foto della scatola (Brickset) per gli elenchi, se c'è; altrimenti quella di Rebrickable.
+function boxThumb(s) {
+  const box = state.extra?.sets[s.setNum]?.box;
+  if (!box) return null;
+  const full = (p) => (p && !/^https?:/.test(p) ? state.extra.imgBase + p : p);
+  return full(box[1]) || full(box[0]);
+}
+
+function listImg(s, cls = "thumb") {
+  const box = boxThumb(s);
+  if (!box) return imgTag(s, "thumb").replace('class="thumb"', `class="${cls}"`);
+  return `<img class="${cls}" src="${esc(box)}" data-full="${esc(s.img)}" alt="" loading="lazy" onerror="imgFallback(this)">`;
+}
+
+const isRealSet = (s) => s.parts != null || s.figs;
+
+// Temi principali con numero di set e set più recente (calcolati una volta sola).
+let themeIndexCache = null;
+function themeIndex() {
+  const sig = state.extra ? "extra" : "base";
+  if (themeIndexCache?.sig === sig) return themeIndexCache;
+  const { themes, rootThemes, sets } = state.catalog;
+  const now = new Date().getFullYear();
+  const today = todayLocal();
+  const info = new Map(rootThemes.map((t) => [t.id, { theme: t, count: 0, newest: null, recent: 0, from: null, to: null }]));
+  for (const s of sets) {
+    const t = info.get(s.root);
+    if (!t || !isRealSet(s)) continue;
+    t.count++;
+    if (s.year != null) {
+      t.from = t.from == null ? s.year : Math.min(t.from, s.year);
+      t.to = t.to == null ? s.year : Math.max(t.to, s.year);
+      if (s.year >= now - RECENT_YEARS + 1) t.recent++;
+    }
+    // Foto della casella: il set già uscito più recente che ha un'immagine.
+    const out = launchOf(s) ? launchOf(s) <= today : s.year != null && s.year <= now;
+    if (out && s.img && (!t.newest || byRelease(s, t.newest) < 0)) t.newest = s;
+  }
+  const all = [...info.values()].filter((t) => t.count);
+  const main = (t) => t.recent && !NOT_BUILDING.includes(t.theme.name);
+  themeIndexCache = { sig, active: all.filter(main), old: all.filter((t) => !main(t)), themes };
+  return themeIndexCache;
+}
+
+function renderThemes() {
+  setHeader("Temi LEGO");
+  setTab("temi");
+  const { active, old } = themeIndex();
+  const tile = (t) => {
+    const s = t.newest;
+    const img = s ? listImg(s, "tile-img") : '<div class="tile-img"></div>';
+    return `<a class="tile" href="#/tema/${t.theme.id}">${img}<span class="tile-name">${esc(t.theme.name)}</span><span class="tile-count">${fmtNum(t.count)} set</span></a>`;
+  };
+  const row = (t) => `<li><a class="item compact" href="#/tema/${t.theme.id}"><div class="info"><div class="name">${esc(t.theme.name)}</div><div class="meta">${fmtNum(t.count)} set · ${t.from === t.to ? t.from ?? "" : `${t.from}–${t.to}`}</div></div></a></li>`;
+  $("#view").innerHTML = `
+    <p class="muted small">Tocca un tema per vedere tutti i suoi set, dal più nuovo. I nomi dei temi sono quelli originali in inglese.</p>
+    <div class="tiles">${active.map(tile).join("")}</div>
+    <details class="old-themes" ${state.oldThemesOpen ? "open" : ""}>
+      <summary>Altri temi: vecchi, libri e gadget (${old.length})</summary>
+      <ul class="list">${old.map(row).join("")}</ul>
+    </details>`;
+  $(".old-themes").addEventListener("toggle", (ev) => { state.oldThemesOpen = ev.target.open; });
+  window.scrollTo(0, state.themesScroll || 0);
+  // Le date di uscita e le foto delle scatole arrivano da Brickset: appena ci sono si ridisegna.
+  if (!state.extra) loadExtra().then(() => {
+    if (currentRoute !== "#/temi") return;
+    state.themesScroll = window.scrollY;
+    renderThemes();
+  }).catch(() => {});
+}
+
+function renderTheme(id) {
+  const t = state.catalog.themes[id];
+  if (!t) { location.hash = "#/temi"; return; }
+  setHeader(t.name, "#/temi");
+  setTab("temi");
+  const v = state.themeView?.id === id ? state.themeView : (state.themeView = { id, sub: "", shown: PAGE, scroll: 0 });
+  const subs = state.catalog.byTheme(state.catalog.children[id] || []);
+  const subOpts = subs.map((x) => `<option value="${x.id}" ${String(x.id) === v.sub ? "selected" : ""}>${esc(x.name)}</option>`).join("");
+  $("#view").innerHTML = `
+    ${subs.length ? `<select id="theme-sub" aria-label="Sottotema"><option value="">Tutti i sottotemi</option>${subOpts}</select>` : ""}
+    <div class="result-info"><span id="count"></span><span>dal più nuovo</span></div>
+    <ul class="list" id="theme-list"></ul>
+    <div id="more"></div>`;
+  $("#theme-sub")?.addEventListener("change", (ev) => { v.sub = ev.target.value; v.shown = PAGE; v.scroll = 0; drawThemeList(id); });
+  drawThemeList(id);
+  window.scrollTo(0, v.scroll);
+  if (!state.extra) loadExtra().then(() => { if (currentRoute === `#/tema/${id}`) drawThemeList(id); }).catch(() => {});
+}
+
+function drawThemeList(id, append = false) {
+  const v = state.themeView;
+  const ul = $("#theme-list");
+  if (!ul) return;
+  const filter = v.sub !== "" ? Number(v.sub) : Number(id);
+  const list = state.catalog.sets.filter((s) => s.chain.includes(filter) && isRealSet(s)).sort(byRelease);
+  $("#count").textContent = list.length === 1 ? "1 set" : `${fmtNum(list.length)} set`;
+  if (moreObserver) { moreObserver.disconnect(); moreObserver = null; }
+  if (!list.length) {
+    ul.innerHTML = `<li class="empty"><b>Nessun set</b>In questo tema non ci sono set con pezzi.</li>`;
+    $("#more").innerHTML = "";
+    return;
+  }
+  const already = append ? ul.children.length : 0;
+  const rows = list.slice(already, v.shown).map(setItem).join("");
+  if (append) ul.insertAdjacentHTML("beforeend", rows);
+  else ul.innerHTML = rows;
+  if (list.length > v.shown) {
+    $("#more").innerHTML = `<button class="btn full more">Mostra altri</button>`;
+    const btn = $("#more button");
+    const more = () => { v.shown += PAGE; drawThemeList(id, true); };
     btn.addEventListener("click", more);
     moreObserver = new IntersectionObserver((entries) => {
       if (entries.some((e) => e.isIntersecting)) more();
@@ -796,6 +958,7 @@ function renderDetail(setNum) {
       $("#x-bt").innerHTML = "Sì: si può costruire in più persone con l'app LEGO Builder";
       $("#x-badges").insertAdjacentHTML("beforeend", `<span class="tag tag-bt">👥 Costruisci insieme</span>`);
     }
+    if (found) $("#x-badges").insertAdjacentHTML("afterbegin", releaseBadge(s));
     if (x.launch) $("#x-launch").innerHTML = esc(fmtDate(x.launch)) + (x.launch > todayLocal() ? ' <span class="muted small">(non ancora uscito)</span>' : "");
     if (x.exit) $("#x-exit").innerHTML = x.exit > todayLocal() ? `previsto dal ${esc(fmtDate(x.exit))}` : `dal ${esc(fmtDate(x.exit))}`;
     else if (x.launch && x.launch <= todayLocal()) $("#x-exit").innerHTML = "no, non ancora";
@@ -1284,8 +1447,10 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 function route() {
   flushPending();
   stopScan();
-  const hash = location.hash || "#/catalogo";
-  if (currentRoute.startsWith("#/catalogo") || currentRoute === "") state.catalogScroll = window.scrollY;
+  const hash = location.hash || "#/temi";
+  if (currentRoute.startsWith("#/catalogo")) state.catalogScroll = window.scrollY;
+  if (currentRoute === "#/temi" || currentRoute === "") state.themesScroll = window.scrollY;
+  if (currentRoute.startsWith("#/tema/") && state.themeView) state.themeView.scroll = window.scrollY;
   state.cameFromApp = currentRoute !== "";
   currentRoute = hash;
   const [, page, arg] = hash.split("/");
@@ -1294,8 +1459,10 @@ function route() {
   else if (page === "desideri") renderWishlist();
   else if (page === "backup") renderBackup();
   else if (page === "scansiona") renderScan();
-  else renderCatalog();
-  if (page !== "catalogo" && page !== undefined && page !== "") window.scrollTo(0, 0);
+  else if (page === "tema" && arg) renderTheme(Number(arg));
+  else if (page === "catalogo") renderCatalog();
+  else renderThemes();
+  if (!["catalogo", "temi", "tema", undefined, ""].includes(page)) window.scrollTo(0, 0);
 }
 
 function setupInstallHint() {
