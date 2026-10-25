@@ -19,7 +19,20 @@ from pathlib import Path
 BASE_URL = "https://cdn.rebrickable.com/media/downloads/"
 FILES = ["themes", "sets", "inventories", "inventory_minifigs", "inventory_sets", "minifigs"]
 IMG_PREFIX = "https://cdn.rebrickable.com/media/"
-BRICKSET_FILE = Path(__file__).resolve().parent.parent / "data-src" / "brickset.json"
+DATA_SRC = Path(__file__).resolve().parent.parent / "data-src"
+BRICKSET_FILE = DATA_SRC / "brickset.json"
+BRICKSET_TEXTS = DATA_SRC / "brickset-testi.json"
+BRICKSET_PHOTOS = DATA_SRC / "brickset-foto.json"
+BRICKSET_IMG = "https://images.brickset.com/sets/"
+DETAIL_FILES = 64  # descrizioni e foto divise in tanti file piccoli: l'app apre solo quello del set
+
+
+def detail_file(set_num):
+    """Numero del file con i dettagli del set; l'app fa lo stesso calcolo (detailFile in app.js)."""
+    h = 0
+    for ch in set_num:
+        h = (h * 31 + ord(ch)) & 0xFFFFFFFF
+    return h % DETAIL_FILES
 
 csv.field_size_limit(sys.maxsize)
 
@@ -119,16 +132,41 @@ def build(out_dir, src=None):
                "themes": themes, "sets": sets}
     minifigs = {"generated": generated, "imgBase": IMG_PREFIX,
                 "figs": figs, "sets": set_figs}
-    # Dati Brickset (codici a barre, eta', prezzi), se gia' scaricati.
+    # Dati Brickset (codici a barre, eta', prezzi, date di uscita), se gia' scaricati.
     extra = {}
     if BRICKSET_FILE.exists():
         for year in json.loads(BRICKSET_FILE.read_text(encoding="utf-8"))["years"].values():
             extra.update(year["sets"])
-    extra_file = {"generated": generated, "source": "Brickset", "sets": extra}
-    for name, obj in (("catalog.json", catalog), ("minifigs.json", minifigs), ("extra.json", extra_file)):
+    # Descrizioni, tag e foto in piu': in file separati, letti solo aprendo la scheda del set.
+    details = defaultdict(dict)
+    if BRICKSET_TEXTS.exists():
+        for year in json.loads(BRICKSET_TEXTS.read_text(encoding="utf-8"))["years"].values():
+            for set_num, text in year["sets"].items():
+                details[set_num].update(text)
+    if BRICKSET_PHOTOS.exists():
+        for set_num, info in json.loads(BRICKSET_PHOTOS.read_text(encoding="utf-8"))["sets"].items():
+            if not info["imgs"]:
+                continue
+            details[set_num]["imgs"] = info["imgs"]
+            if "box1" in info["imgs"][0][0].rsplit("/", 1)[-1].lower() and set_num in extra:
+                extra[set_num]["box"] = info["imgs"][0]  # foto della scatola, per gli elenchi
+    extra_file = {"generated": generated, "source": "Brickset", "imgBase": BRICKSET_IMG,
+                  "detailFiles": DETAIL_FILES, "sets": extra}
+    files = [("catalog.json", catalog), ("minifigs.json", minifigs), ("extra.json", extra_file)]
+    buckets = defaultdict(dict)
+    for set_num, info in details.items():
+        buckets[detail_file(set_num)][set_num] = info
+    for i in range(DETAIL_FILES):
+        files.append((f"dettagli/{i}.json", {"generated": generated, "source": "Brickset",
+                                             "imgBase": BRICKSET_IMG, "sets": buckets.get(i, {})}))
+    (out / "dettagli").mkdir(exist_ok=True)
+    for name, obj in files:
         (out / name).write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")),
                                 encoding="utf-8")
-    summary = f"{len(sets)} set, {len(themes)} temi, {len(figs)} minifigure, {len(extra)} set con dati Brickset"
+    n_photos = sum(1 for d in details.values() if d.get("imgs"))
+    n_desc = sum(1 for d in details.values() if d.get("desc"))
+    summary = (f"{len(sets)} set, {len(themes)} temi, {len(figs)} minifigure, {len(extra)} set con dati Brickset, "
+               f"{n_desc} con descrizione, {n_photos} con foto in piu'")
     print(f"{summary} -> {out}")
     if os.environ.get("GITHUB_ACTIONS"):
         sample = {s[0]: s[1:] for s in sets if s[0] in ("10294-1", "75192-1")}

@@ -268,8 +268,35 @@ async function loadExtra() {
       if (!barcodes.get(key).includes(setNum)) barcodes.get(key).push(setNum);
     }
   }
-  state.extra = { sets: raw.sets || {}, barcodes };
+  state.extra = { sets: raw.sets || {}, barcodes, imgBase: raw.imgBase, detailFiles: raw.detailFiles };
   return state.extra;
+}
+
+// Descrizione, tag e foto in più di un set (da Brickset): divisi in tanti file piccoli,
+// si scarica solo quello del set aperto. Stesso calcolo di detail_file in build_catalog.py.
+const detailCache = new Map();
+function detailFile(setNum, files) {
+  let h = 0;
+  for (const ch of setNum) h = (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0;
+  return h % files;
+}
+
+async function loadDetails(setNum) {
+  const extra = await loadExtra();
+  if (!extra.detailFiles) return null;
+  const n = detailFile(setNum, extra.detailFiles);
+  if (!detailCache.has(n)) {
+    detailCache.set(n, fetch(`data/dettagli/${n}.json`).then((res) => {
+      if (!res.ok) throw new Error("dettagli non trovati");
+      return res.json();
+    }).catch((err) => { detailCache.delete(n); throw err; }));
+  }
+  const raw = await detailCache.get(n);
+  const info = raw.sets?.[setNum];
+  if (!info) return null;
+  // Le foto arrivano come [foto, miniatura] senza l'indirizzo iniziale: lo rimettiamo.
+  const full = (path) => (path && !/^https?:/.test(path) ? raw.imgBase + path : path);
+  return { ...info, imgs: (info.imgs || []).map(([img, thumb]) => ({ img: full(img), thumb: full(thumb) || full(img) })) };
 }
 
 // I codici UPC (12 cifre) e EAN (13 cifre) dello stesso prodotto differiscono solo per gli zeri iniziali.
