@@ -1,9 +1,11 @@
 // Fa funzionare l'app anche senza internet.
-const VERSION = "v13";
+const VERSION = "v14";
 const SHELL = "shell-" + VERSION;
 const DATA = "data";
 const IMAGES = "images";
 const MAX_IMAGES = 200;
+const GALLERY = "gallery";
+const MAX_GALLERY = 300;
 const DATA_FILES = ["data/catalog.json", "data/minifigs.json", "data/extra.json"];
 const NETWORK_TIMEOUT = 3000;
 const SHELL_FILES = ["./", "index.html", "style.css", "app.js", "manifest.webmanifest",
@@ -31,8 +33,11 @@ self.addEventListener("fetch", (e) => {
     e.respondWith(staleWhileRevalidate(req));
   } else if (url.origin === location.origin) {
     e.respondWith(networkFirst(req));
-  } else if (url.hostname.endsWith("rebrickable.com") || url.hostname === "images.brickset.com") {
-    e.respondWith(cachedImage(req));
+  } else if (url.hostname.endsWith("rebrickable.com")) {
+    e.respondWith(cachedImage(req, IMAGES, MAX_IMAGES));
+  } else if (url.hostname === "images.brickset.com") {
+    // Foto della galleria in una cache a parte, così non fanno sparire quelle degli elenchi.
+    e.respondWith(cachedImage(req, GALLERY, MAX_GALLERY));
   }
 });
 
@@ -63,14 +68,14 @@ async function networkFirst(req) {
   }
 }
 
-async function cachedImage(req) {
-  const cache = await caches.open(IMAGES);
+async function cachedImage(req, name, max) {
+  const cache = await caches.open(name);
   const cached = await cache.match(req);
   if (cached) return cached;
   const res = await fetch(req);
   cache.put(req, res.clone()).then(async () => {
     const keys = await cache.keys();
-    for (let i = 0; i < keys.length - MAX_IMAGES; i++) await cache.delete(keys[i]);
+    for (let i = 0; i < keys.length - max; i++) await cache.delete(keys[i]);
   });
   return res;
 }
