@@ -38,7 +38,10 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const norm = (s) => String(s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 const fmtNum = (n) => (n == null ? null : n.toLocaleString("it-IT"));
-const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" }) : "");
+const fmtDate = (iso) => {
+  const d = iso ? new Date(iso) : null;
+  return d && !isNaN(d) ? d.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" }) : "";
+};
 
 function debounce(fn, ms) {
   let t;
@@ -52,7 +55,8 @@ function todayLocal() {
 }
 
 function isIosBrowser() {
-  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  // Gli iPad recenti si presentano come Mac: li riconosciamo dallo schermo touch.
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (/macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
   return ios && !standalone;
 }
@@ -385,7 +389,7 @@ function renderDetail(setNum) {
       <div class="saved" id="saved"></div>
     </div>
 
-    ${!found ? `<div class="warn">Questo set è nella tua collezione ma non è più nel catalogo di Rebrickable. Puoi comunque cambiare stato e note, o metterlo su "Non posseduto" per toglierlo.</div>` : ""}
+    ${!found ? `<div class="warn">Questo set è nella tua collezione ma non è più nel catalogo di Rebrickable. Puoi comunque cambiare stato e note, o metterlo su "Non posseduto" (e togliere note e preferito) per toglierlo.</div>` : ""}
     <div class="card">
       <h2>Dati del set</h2>
       <dl class="data">
