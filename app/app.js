@@ -114,7 +114,7 @@ function entry(setNum) {
 function updateEntry(setNum, changes) {
   const e = { ...entry(setNum), ...changes, u: new Date().toISOString() };
   state.collectionVersion++;
-  if (e.s === "none" && !e.f && !e.n && !e.d) delete state.collection[setNum];
+  if (e.s === "none" && !e.f && !e.n && !e.d && !e.v) delete state.collection[setNum];
   else state.collection[setNum] = e;
   return saveCollection();
 }
@@ -378,9 +378,19 @@ function setItem(s) {
   const badge = e.s !== "none" ? `<span class="badge st-${e.s}">${esc(STATUS_LABEL[e.s])}</span>` : "";
   return `<li><a class="item" href="#/set/${encodeURIComponent(s.setNum)}">
     ${imgTag(s, "thumb")}
-    <div class="info"><div class="name">${esc(s.name)}</div><div class="meta">${esc(meta)}</div>${badge}</div>
+    <div class="info"><div class="name">${esc(s.name)}</div><div class="meta">${esc(meta)}</div>${badge}${e.v ? `<span class="stars-small" aria-label="Voto ${e.v} su 5">${starText(e.v)}</span>` : ""}</div>
     ${state.photoCounts[s.setNum] ? '<span class="fav" title="Ha foto">📷</span>' : ""}${e.f ? '<span class="fav">❤️</span>' : ""}
   </a></li>`;
+}
+
+// Voto da 1 a 5 stelle, dato da lei ai set costruiti (campo "v" nella collezione).
+function starText(v) {
+  return "★".repeat(v) + `<span class="off">${"★".repeat(5 - v)}</span>`;
+}
+
+function starButtons(v) {
+  return [1, 2, 3, 4, 5].map((n) =>
+    `<button type="button" class="star ${n <= (v || 0) ? "on" : ""}" data-star="${n}" aria-label="${n} ${n === 1 ? "stella" : "stelle"}" aria-pressed="${n === v}">★</button>`).join("");
 }
 
 function renderCatalog() {
@@ -504,6 +514,7 @@ function renderDetail(setNum) {
     : [];
   const val = (v) => (v == null || v === "" ? NA : esc(v));
   const showDate = e.s === "built" || e.s === "apart" || e.d;
+  const showRating = e.s === "built" || e.s === "apart" || e.v;
 
   $("#view").innerHTML = `
     ${imgTag(s, "hero")}
@@ -519,6 +530,11 @@ function renderDetail(setNum) {
       <div class="field" id="date-field" ${showDate ? "" : "hidden"}>
         <label for="built-date">Data in cui l'ho costruito</label>
         <div class="search-row"><input type="date" id="built-date" value="${esc(e.d || "")}"><button class="btn" id="today" type="button">Oggi</button></div>
+      </div>
+      <div class="field" id="rating-field" ${showRating ? "" : "hidden"}>
+        <label id="rating-label">Il mio voto</label>
+        <div class="stars" role="group" aria-labelledby="rating-label">${starButtons(e.v)}</div>
+        <div class="small muted" id="rating-hint">${e.v ? "Tocca di nuovo la stessa stella per togliere il voto." : "Quanto ti è piaciuto costruirlo?"}</div>
       </div>
       <div class="field">
         <label for="notes">Note</label>
@@ -571,14 +587,29 @@ function renderDetail(setNum) {
   document.querySelectorAll(".status-btn").forEach((btn) => btn.addEventListener("click", () => {
     const st = btn.dataset.status;
     const changes = { s: st };
-    if (["none", "wish", "owned"].includes(st)) changes.d = undefined; // non ancora costruito: niente data
+    if (["none", "wish", "owned"].includes(st)) changes.d = changes.v = undefined; // non ancora costruito: niente data né voto
     const ok = updateEntry(setNum, changes);
     document.querySelectorAll(".status-btn").forEach((b) => { b.className = "status-btn" + (b.dataset.status === st ? " on st-" + st : ""); });
     const cur = entry(setNum);
     $("#date-field").hidden = !(st === "built" || st === "apart" || cur.d);
     $("#built-date").value = cur.d || "";
+    showStars(cur.v);
+    $("#rating-field").hidden = !(st === "built" || st === "apart" || cur.v);
     if (ok) flash();
   }));
+  const showStars = (v) => {
+    $(".stars").innerHTML = starButtons(v);
+    $("#rating-hint").textContent = v ? "Tocca di nuovo la stessa stella per togliere il voto." : "Quanto ti è piaciuto costruirlo?";
+  };
+  $(".stars").addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-star]");
+    if (!btn) return;
+    const n = Number(btn.dataset.star);
+    const v = entry(setNum).v === n ? undefined : n;
+    if (!updateEntry(setNum, { v })) return;
+    showStars(v);
+    flash();
+  });
   $("#built-date").addEventListener("change", (ev) => { if (updateEntry(setNum, { d: ev.target.value || undefined })) flash(); });
   $("#today").addEventListener("click", () => {
     $("#built-date").value = todayLocal();
@@ -843,6 +874,7 @@ function renderCollection() {
     ["apart", "Smontati", (e) => e.s === "apart"],
     ["fav", "Preferiti ❤️", (e) => e.f],
     ["notes", "Con note", (e) => e.n],
+    ["rated", "Con voto ★", (e) => e.v],
     ["photo", "Con foto 📷", (e, num) => state.photoCounts[num]],
   ];
   const draw = () => {
@@ -873,6 +905,9 @@ function statsCard() {
     if (parts) builtParts += parts; else missingParts++;
   }
   const photos = Object.values(state.photoCounts).reduce((a, b) => a + b, 0);
+  const rated = entries.filter(([, e]) => e.v);
+  const avg = rated.length ? rated.reduce((a, [, e]) => a + e.v, 0) / rated.length : 0;
+  const best = rated.filter(([, e]) => e.v === 5).length;
   const tile = (n, label, id = "") => `<div class="stat"${id ? ` id="${id}"` : ""}><b>${n}</b><span>${label}</span></div>`;
   return `<div class="card">
     <h2>Le mie statistiche</h2>
@@ -883,7 +918,10 @@ function statsCard() {
       ${tile(fmtNum(wish.length), "set desiderati")}
       ${tile(fmtNum(photos), "foto")}
       ${tile('<span class="na">…</span>', "valore indicativo", "stat-value")}
+      ${tile(rated.length ? `${avg.toLocaleString("it-IT", { maximumFractionDigits: 1 })} ★` : '<span class="na">–</span>', "voto medio")}
+      ${tile(fmtNum(best), "set da 5 stelle")}
     </div>
+    ${rated.length ? `<p class="small muted">Voto medio calcolato su ${rated.length === 1 ? "1 set votato" : rated.length + " set votati"}.</p>` : ""}
     ${missingParts ? `<p class="small muted">Pezzi non disponibili per ${missingParts} ${missingParts === 1 ? "set costruito" : "set costruiti"}: non sono contati.</p>` : ""}
     <p class="small muted" id="value-note"></p>
   </div>`;
@@ -1011,6 +1049,7 @@ function cleanCollection(raw) {
     if (typeof e.d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(e.d)) clean.d = e.d;
     if (typeof e.n === "string" && e.n.trim()) clean.n = e.n;
     if (e.f === true) clean.f = true;
+    if (Number.isInteger(e.v) && e.v >= 1 && e.v <= 5) clean.v = e.v;
     if (typeof e.u === "string") clean.u = e.u;
     out[num] = clean;
   }
