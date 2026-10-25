@@ -698,7 +698,7 @@ function firstSlides(s) {
 function galleryHtml(slides) {
   if (!slides.length) return `<div class="noimg">Immagine non disponibile</div>`;
   const one = (sl, i) => sl.figs
-    ? `<div class="slide figs-slide"><div class="figs-grid">${sl.figs.map(([src, name]) => `<img src="${esc(src)}" alt="${esc(name)}" loading="lazy" onerror="this.remove()">`).join("")}</div><div class="slide-label">I personaggi del set</div></div>`
+    ? `<div class="slide figs-slide"><div class="figs-grid">${sl.figs.map(([src, name]) => `<img src="${esc(src)}" alt="${esc(name)}" loading="lazy" onerror="figError(this)">`).join("")}</div><div class="slide-label">I personaggi del set</div></div>`
     : `<button type="button" class="slide" data-full="${esc(sl.img)}" aria-label="Foto ${i + 1}, apri grande"><img src="${esc(sl.img)}" alt="" ${i ? 'loading="lazy"' : ""} onerror="slideError(this)"></button>`;
   return `<div class="gallery"><div class="slides">${slides.map(one).join("")}</div>
     ${slides.length > 1 ? `<div class="dots">${slides.map((_, i) => `<span class="${i ? "" : "on"}"></span>`).join("")}</div>` : ""}</div>`;
@@ -708,6 +708,16 @@ function galleryHtml(slides) {
 window.slideError = (img) => {
   const gallery = img.closest(".gallery");
   img.closest(".slide").remove();
+  if (gallery) setupGallery(gallery);
+};
+
+// Se nessuna foto dei personaggi si carica, la loro pagina sparisce.
+window.figError = (img) => {
+  const grid = img.parentElement;
+  img.remove();
+  if (grid.children.length) return;
+  const gallery = grid.closest(".gallery");
+  grid.closest(".slide").remove();
   if (gallery) setupGallery(gallery);
 };
 
