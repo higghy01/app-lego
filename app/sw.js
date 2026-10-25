@@ -1,13 +1,13 @@
 // Fa funzionare l'app anche senza internet.
-const VERSION = "v3";
+const VERSION = "v4";
 const SHELL = "shell-" + VERSION;
 const DATA = "data";
 const IMAGES = "images";
 const MAX_IMAGES = 200;
-const DATA_FILES = ["data/catalog.json", "data/minifigs.json"];
+const DATA_FILES = ["data/catalog.json", "data/minifigs.json", "data/extra.json"];
 const NETWORK_TIMEOUT = 3000;
 const SHELL_FILES = ["./", "index.html", "style.css", "app.js", "manifest.webmanifest",
-  "icons/apple-touch-icon.png", "icons/icon-192.png", "icons/icon-512.png"];
+  "icons/apple-touch-icon.png", "icons/icon-192.png", "icons/icon-512.png", "vendor/zxing-browser.min.js"];
 
 self.addEventListener("install", (e) => {
   // Alla prima apertura salva subito app e catalogo, così funziona anche offline.

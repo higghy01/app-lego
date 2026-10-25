@@ -19,6 +19,7 @@ from pathlib import Path
 BASE_URL = "https://cdn.rebrickable.com/media/downloads/"
 FILES = ["themes", "sets", "inventories", "inventory_minifigs", "inventory_sets", "minifigs"]
 IMG_PREFIX = "https://cdn.rebrickable.com/media/"
+BRICKSET_FILE = Path(__file__).resolve().parent.parent / "data-src" / "brickset.json"
 
 csv.field_size_limit(sys.maxsize)
 
@@ -118,10 +119,16 @@ def build(out_dir, src=None):
                "themes": themes, "sets": sets}
     minifigs = {"generated": generated, "imgBase": IMG_PREFIX,
                 "figs": figs, "sets": set_figs}
-    for name, obj in (("catalog.json", catalog), ("minifigs.json", minifigs)):
+    # Dati Brickset (codici a barre, eta', prezzi), se gia' scaricati.
+    extra = {}
+    if BRICKSET_FILE.exists():
+        for year in json.loads(BRICKSET_FILE.read_text(encoding="utf-8"))["years"].values():
+            extra.update(year["sets"])
+    extra_file = {"generated": generated, "source": "Brickset", "sets": extra}
+    for name, obj in (("catalog.json", catalog), ("minifigs.json", minifigs), ("extra.json", extra_file)):
         (out / name).write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")),
                                 encoding="utf-8")
-    summary = f"{len(sets)} set, {len(themes)} temi, {len(figs)} minifigure"
+    summary = f"{len(sets)} set, {len(themes)} temi, {len(figs)} minifigure, {len(extra)} set con dati Brickset"
     print(f"{summary} -> {out}")
     if os.environ.get("GITHUB_ACTIONS"):
         sample = {s[0]: s[1:] for s in sets if s[0] in ("10294-1", "75192-1")}

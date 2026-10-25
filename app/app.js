@@ -156,6 +156,48 @@ async function loadCatalog() {
   state.catalog = { generated: raw.generated, sets, bySetNum, themes, rootThemes, children, byTheme, imgBase: raw.imgBase };
 }
 
+// Dati Brickset: codici a barre, età, prezzi, valutazioni (caricati solo quando servono).
+async function loadExtra() {
+  if (state.extra) return state.extra;
+  const res = await fetch("data/extra.json");
+  if (!res.ok) throw new Error("dati extra non trovati");
+  const raw = await res.json();
+  const barcodes = new Map();
+  for (const [setNum, info] of Object.entries(raw.sets || {})) {
+    for (const code of [info.ean, info.upc]) {
+      const key = normBarcode(code);
+      if (!key) continue;
+      if (!barcodes.has(key)) barcodes.set(key, []);
+      if (!barcodes.get(key).includes(setNum)) barcodes.get(key).push(setNum);
+    }
+  }
+  state.extra = { sets: raw.sets || {}, barcodes };
+  return state.extra;
+}
+
+// I codici UPC (12 cifre) e EAN (13 cifre) dello stesso prodotto differiscono solo per gli zeri iniziali.
+function normBarcode(code) {
+  const digits = String(code ?? "").replace(/\D/g, "").replace(/^0+/, "");
+  return digits.length >= 6 ? digits : "";
+}
+
+const PRICE_PLACES = [["DE", "€", "prezzo LEGO in Germania"], ["UK", "£", "prezzo LEGO nel Regno Unito"], ["US", "$", "prezzo LEGO negli Stati Uniti"], ["CA", "C$", "prezzo LEGO in Canada"]];
+
+function fmtPrice(prices) {
+  if (!prices) return NA;
+  const rows = PRICE_PLACES.filter(([c]) => prices[c])
+    .map(([c, sym, label]) => `${esc(prices[c].toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }))} ${sym} <span class="muted small">(${label})</span>`);
+  return rows.length ? rows.join("<br>") : NA;
+}
+
+function fmtAge(age) {
+  if (!age) return NA;
+  const [min, max] = age;
+  if (min && max) return `${min}-${max} anni`;
+  if (min) return `${min}+ anni`;
+  return max ? `fino a ${max} anni` : NA;
+}
+
 async function loadMinifigs() {
   if (state.minifigs) return state.minifigs;
   const res = await fetch("data/minifigs.json");
@@ -399,11 +441,12 @@ function renderDetail(setNum) {
         <dt>Anno</dt><dd>${val(s.year)}</dd>
         <dt>Pezzi</dt><dd>${val(fmtNum(s.parts))}</dd>
         <dt>Minifigure</dt><dd>${val(s.figs)}</dd>
-        <dt>Codice a barre</dt><dd>${NA}</dd>
-        <dt>Fascia d'età</dt><dd>${NA}</dd>
-        <dt>Prezzo di listino</dt><dd>${NA}</dd>
+        <dt>Codice a barre</dt><dd id="x-barcode">${NA}</dd>
+        <dt>Fascia d'età</dt><dd id="x-age">${NA}</dd>
+        <dt>Prezzo di listino</dt><dd id="x-price">${NA}</dd>
+        <dt>Valutazione</dt><dd id="x-rating">${NA}</dd>
         <dt>Istruzioni</dt><dd><a href="https://www.lego.com/it-it/service/building-instructions/${encodeURIComponent(base)}" target="_blank" rel="noopener">Cerca sul sito LEGO</a></dd>
-        <dt>Scheda</dt><dd><a href="https://rebrickable.com/sets/${encodeURIComponent(s.setNum)}/" target="_blank" rel="noopener">Apri su Rebrickable</a></dd>
+        <dt>Scheda</dt><dd><a href="https://rebrickable.com/sets/${encodeURIComponent(s.setNum)}/" target="_blank" rel="noopener">Apri su Rebrickable</a><br><a href="https://brickset.com/sets/${encodeURIComponent(s.setNum)}" target="_blank" rel="noopener">Apri su Brickset</a></dd>
       </dl>
     </div>
 
@@ -454,6 +497,16 @@ function renderDetail(setNum) {
     flash();
   });
 
+  loadExtra().then(({ sets }) => {
+    const x = sets[s.setNum];
+    if (!x || !$("#x-barcode")) return;
+    const codes = [x.ean && `EAN ${esc(x.ean)}`, x.upc && `UPC ${esc(x.upc)}`].filter(Boolean);
+    if (codes.length) $("#x-barcode").innerHTML = codes.join("<br>");
+    $("#x-age").innerHTML = fmtAge(x.age);
+    $("#x-price").innerHTML = fmtPrice(x.price);
+    if (x.rating) $("#x-rating").innerHTML = `${esc(x.rating.toLocaleString("it-IT"))} su 5 <span class="muted small">(Brickset)</span>`;
+  }).catch(() => {});
+
   if (s.figs) {
     loadMinifigs().then((m) => {
       const list = m.sets[s.setNum] || [];
@@ -468,6 +521,119 @@ function renderDetail(setNum) {
       }).join("")}</ul>`;
     }).catch(() => { const el = $("#figs"); if (el) el.innerHTML = "Elenco non disponibile senza internet."; });
   }
+}
+
+// ---------- Scansione codice a barre ----------
+
+let scanControls = null;
+
+function stopScan() {
+  if (scanControls) { try { scanControls.stop(); } catch {} scanControls = null; }
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+    const el = document.createElement("script");
+    el.src = src;
+    el.onload = resolve;
+    el.onerror = () => reject(new Error("script non caricato"));
+    document.head.appendChild(el);
+  });
+}
+
+function renderScan() {
+  setHeader("Scansiona");
+  setTab("scansiona");
+  $("#view").innerHTML = `
+    <div class="scan-box" id="scan-box">
+      <video id="cam" playsinline muted autoplay></video>
+      <div class="scan-frame"></div>
+    </div>
+    <p class="center" id="scan-msg">Inquadra il codice a barre sulla scatola.</p>
+    <div class="center"><button class="btn primary" id="scan-start" hidden>Avvia la fotocamera</button></div>
+    <div id="scan-result"></div>
+    <div class="card">
+      <h2>Oppure scrivi il codice</h2>
+      <p class="small muted">Il numero del set (es. 10294) o le cifre sotto il codice a barre.</p>
+      <form class="search-row" id="manual">
+        <input type="search" id="manual-code" inputmode="numeric" autocomplete="off" placeholder="es. 10294">
+        <button class="btn" type="submit">Cerca</button>
+      </form>
+    </div>`;
+  $("#manual").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const code = $("#manual-code").value.trim();
+    if (code) { $("#manual-code").blur(); handleCode(code, true); }
+  });
+  $("#scan-start").addEventListener("click", startScan);
+  startScan();
+}
+
+async function startScan() {
+  const msg = $("#scan-msg");
+  $("#scan-start").hidden = true;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    msg.textContent = "Questo telefono non permette di usare la fotocamera qui. Scrivi il codice qui sotto.";
+    $("#scan-box").hidden = true;
+    return;
+  }
+  try {
+    await loadScript("vendor/zxing-browser.min.js");
+    stopScan();
+    const reader = new ZXingBrowser.BrowserMultiFormatReader();
+    const controls = await reader.decodeFromConstraints(
+      { video: { facingMode: "environment" } }, $("#cam"),
+      (result, err, ctrl) => {
+        if (!result) return;
+        ctrl.stop();
+        scanControls = null;
+        if (navigator.vibrate) navigator.vibrate(80);
+        handleCode(result.getText(), false);
+      });
+    if (location.hash !== "#/scansiona") { controls.stop(); return; }
+    scanControls = controls;
+  } catch (err) {
+    $("#scan-box").hidden = true;
+    msg.textContent = err && err.name === "NotAllowedError"
+      ? "Per scansionare serve il permesso di usare la fotocamera. Puoi darlo da Impostazioni dell'iPhone, oppure scrivere il codice qui sotto."
+      : "Non riesco ad avviare la fotocamera. Puoi scrivere il codice qui sotto.";
+    $("#scan-start").hidden = false;
+  }
+}
+
+async function handleCode(text, typed) {
+  const out = $("#scan-result");
+  if (!out) return;
+  const digits = String(text).replace(/\D/g, "");
+  let matches = [];
+  let extraMissing = false;
+  // Codice a barre (8 cifre o più) cercato nei dati Brickset.
+  if (digits.length >= 8) {
+    try {
+      const { barcodes, sets } = await loadExtra();
+      extraMissing = Object.keys(sets).length === 0;
+      matches = (barcodes.get(normBarcode(digits)) || []).map((n) => state.catalog.bySetNum.get(n)).filter(Boolean);
+    } catch { extraMissing = true; }
+  }
+  // Numero del set (scritto a mano o letto da un QR code che lo contiene).
+  if (!matches.length) {
+    const num = typed
+      ? (digits.length < 8 ? String(text).trim().toLowerCase() : null)
+      : (String(text).match(/\b(\d{3,7}(-\d+)?)\b/) || [])[1];
+    if (num) {
+      matches = state.catalog.sets.filter((s) => s.setNum === num || s.base === num).sort((a, b) => a.codeRank - b.codeRank);
+    }
+  }
+  if (matches.length === 1) { location.hash = "#/set/" + encodeURIComponent(matches[0].setNum); return; }
+  const again = `<div class="center"><button class="btn primary" id="scan-again">Scansiona un altro</button></div>`;
+  if (matches.length) {
+    out.innerHTML = `<div class="card"><h2>Ho trovato ${matches.length} set</h2><ul class="list">${matches.map(setItem).join("")}</ul></div>${again}`;
+  } else {
+    out.innerHTML = `<div class="card"><h2>Codice non trovato</h2><p class="small">Ho letto <b>${esc(text)}</b> ma non corrisponde a nessun set.
+      ${extraMissing ? "I codici a barre non sono ancora stati scaricati da Brickset: per ora cerca con il numero del set." : "Prova a scrivere il numero del set che trovi sulla scatola (di solito in alto, es. 10294)."}</p></div>${again}`;
+  }
+  $("#scan-again").addEventListener("click", () => { out.innerHTML = ""; $("#scan-box").hidden = false; startScan(); });
 }
 
 function collectionList(filter) {
@@ -533,7 +699,7 @@ function renderBackup() {
     </div>
     <div class="card small muted">
       Catalogo: ${fmtNum(state.catalog.sets.length)} set, aggiornato il ${fmtDate(state.catalog.generated)}.<br>
-      Dati del catalogo da <a href="https://rebrickable.com" target="_blank" rel="noopener">Rebrickable</a>. Si aggiorna da solo ogni settimana.
+      Dati del catalogo da <a href="https://rebrickable.com" target="_blank" rel="noopener">Rebrickable</a>; codici a barre, età e prezzi da <a href="https://brickset.com" target="_blank" rel="noopener">Brickset</a>. Si aggiorna da solo.
     </div>`;
   $("#export").addEventListener("click", exportBackup);
   $("#import-btn").addEventListener("click", () => $("#import").click());
@@ -620,6 +786,7 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 
 function route() {
   flushPending();
+  stopScan();
   const hash = location.hash || "#/catalogo";
   if (currentRoute.startsWith("#/catalogo") || currentRoute === "") state.catalogScroll = window.scrollY;
   state.cameFromApp = currentRoute !== "";
@@ -629,6 +796,7 @@ function route() {
   else if (page === "collezione") renderCollection();
   else if (page === "desideri") renderWishlist();
   else if (page === "backup") renderBackup();
+  else if (page === "scansiona") renderScan();
   else renderCatalog();
   if (page !== "catalogo" && page !== undefined && page !== "") window.scrollTo(0, 0);
 }

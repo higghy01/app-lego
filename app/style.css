@@ -150,3 +150,7 @@ dl.data dd { margin: 0; font-size: 15px; }
 .st-building { background: var(--st-building); }
 .st-built { background: var(--st-built); }
 .st-apart { background: var(--st-apart); }
+
+.scan-box { position: relative; background: #000; border-radius: 14px; overflow: hidden; aspect-ratio: 4 / 3; }
+.scan-box video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scan-frame { position: absolute; left: 10%; right: 10%; top: 30%; bottom: 30%; border: 3px solid rgba(255,255,255,.9); border-radius: 10px; box-shadow: 0 0 0 999px rgba(0,0,0,.25); }
