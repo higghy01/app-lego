@@ -826,7 +826,8 @@ async function fillGallery(s) {
   ]);
   const slides = [];
   const extra = details?.imgs || [];
-  const isBox = (u) => /box1/i.test(u.split("/").pop());
+  // L'elenco arriva già ordinato con la scatola per prima (Box1, boxprod, Box5...).
+  const isBox = (u) => /(?:^|[_-])box(\d*|prod)(?=[_.-]|$)/i.test(u.split("/").pop());
   if (extra[0] && isBox(extra[0].img)) slides.push(extra.shift());
   if (s.img) slides.push({ img: s.img });
   slides.push(...extra);
