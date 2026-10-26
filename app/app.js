@@ -425,9 +425,10 @@ function knownBuddies() {
   return [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "it")).map(([name]) => name);
 }
 
-function buddyChips(w) {
+// "keep": nomi tolti mentre la scheda è aperta, che restano da ritoccare anche se non sono più usati altrove.
+function buddyChips(w, keep = []) {
   const mine = w || [];
-  const others = knownBuddies().filter((name) => !mine.includes(name));
+  const others = [...new Set([...knownBuddies(), ...keep])].filter((name) => !mine.includes(name));
   return mine.map((name) => `<button type="button" class="chip on" data-buddy="${esc(name)}" aria-label="Togli ${esc(name)}">${esc(name)} ✕</button>`).join("")
     + others.map((name) => `<button type="button" class="chip" data-buddy="${esc(name)}" aria-label="Aggiungi ${esc(name)}">+ ${esc(name)}</button>`).join("");
 }
@@ -939,7 +940,7 @@ function renderDetail(setNum) {
           <label for="buddy-new">Con chi l'ho costruito</label>
           <div class="chips buddies" id="buddies">${buddyChips(e.w)}</div>
           <div class="search-row"><input type="text" id="buddy-new" maxlength="30" autocomplete="off" placeholder="Scrivi un nome…" enterkeyhint="done"><button class="btn" id="buddy-add" type="button">Aggiungi</button></div>
-          <div class="small muted">Tocca un nome per aggiungerlo o toglierlo.</div>
+          <div class="small muted hint">Tocca un nome per aggiungerlo o toglierlo.</div>
         </div>
       </div>
       <div class="field">
@@ -1011,7 +1012,7 @@ function renderDetail(setNum) {
     $("#rating-field").hidden = !(st === "built" || st === "apart" || cur.v);
     $("#build-fields").hidden = !(["building", "built", "apart"].includes(st) || cur.t || cur.w);
     showTime(cur.t);
-    $("#buddies").innerHTML = buddyChips(cur.w);
+    $("#buddies").innerHTML = buddyChips(cur.w, [...seenBuddies]);
     if (ok) flash();
   }));
   const showStars = (v) => {
@@ -1049,9 +1050,11 @@ function renderDetail(setNum) {
     showTime(entry(setNum).t);
   }));
   // Con chi: nomi già usati in altri set si scelgono con un tocco, oppure se ne scrive uno nuovo.
+  const seenBuddies = new Set(e.w || []);
   const setBuddies = (w) => {
     if (!updateEntry(setNum, { w: w.length ? w : undefined })) return;
-    $("#buddies").innerHTML = buddyChips(w);
+    w.forEach((name) => seenBuddies.add(name));
+    $("#buddies").innerHTML = buddyChips(w, [...seenBuddies]);
     flash();
   };
   $("#buddies").addEventListener("click", (ev) => {
@@ -1404,7 +1407,7 @@ function statsCard() {
     const n = entries.filter(([, e]) => e.w?.includes(name)).length;
     return `${esc(name)} (${n === 1 ? "1 set" : n + " set"})`;
   });
-  const tile = (n, label, id = "") => `<div class="stat"${id ? ` id="${id}"` : ""}><b>${n}</b><span>${label}</span></div>`;
+  const tile = (n, label, id = "", cls = "") => `<div class="stat"${id ? ` id="${id}"` : ""}><b${cls ? ` class="${cls}"` : ""}>${n}</b><span>${label}</span></div>`;
   return `<div class="card">
     <h2>Le mie statistiche</h2>
     <div class="stats">
@@ -1416,7 +1419,7 @@ function statsCard() {
       ${tile('<span class="na">…</span>', "valore indicativo", "stat-value")}
       ${tile(rated.length ? `${avg.toLocaleString("it-IT", { maximumFractionDigits: 1 })} ★` : '<span class="na">–</span>', "voto medio")}
       ${tile(fmtNum(best), "set da 5 stelle")}
-      ${tile(totalTime ? fmtDuration(totalTime) : '<span class="na">–</span>', "tempo di costruzione")}
+      ${tile(totalTime ? fmtDuration(totalTime) : '<span class="na">–</span>', "tempo di costruzione", "", totalTime >= 60 && totalTime % 60 ? "long" : "")}
     </div>
     ${timed.length ? `<p class="small muted">Tempo calcolato su ${timed.length === 1 ? "1 set" : timed.length + " set"} con il tempo segnato${timed.length > 1 ? `: in media ${fmtDuration(Math.round(totalTime / timed.length))} per set` : ""}.</p>` : ""}
     ${buddies.length ? `<p class="small muted">Costruito più spesso con: ${buddies.join(", ")}.</p>` : ""}

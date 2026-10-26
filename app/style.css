@@ -258,6 +258,7 @@ div.thumb, .noimg {
 .time-add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
 .chips.buddies { margin-bottom: 10px; }
 .chips.buddies:empty { display: none; }
+.hint { margin-top: 8px; }
 .saved { font-size: 13px; font-weight: 600; color: var(--ok); height: 18px; margin-top: 6px; text-align: center; }
 dl.data { display: grid; grid-template-columns: auto 1fr; column-gap: 16px; margin: 0; }
 dl.data dt, dl.data dd { padding: 10px 0; border-top: 1px solid var(--line); }
@@ -334,6 +335,7 @@ li.empty { list-style: none; }
 .stat { background: var(--card-2); border-radius: 12px; padding: 10px 6px; text-align: center; }
 .stat b { display: block; font-size: 21px; font-weight: 800; }
 .stat span { font-size: 12px; color: var(--muted); }
+.stat b.long { font-size: 16px; line-height: 1.6; white-space: nowrap; } /* es. "3 h 20 min": su una riga sola */
 #value-note:empty { display: none; }
 
 /* ---------- Tema LEGO vivace ---------- */
