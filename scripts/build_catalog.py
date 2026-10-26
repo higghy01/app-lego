@@ -68,6 +68,16 @@ def to_int(value):
         return None
 
 
+def box_rank(img):
+    """0 fronte della scatola (Box1), 1 scatola col set montato (boxprod), 2 altre foto
+    della scatola (Box2, Box5...), 3 tutto il resto. Brickset non le mette sempre in quest'ordine."""
+    name = img[0].rsplit("/", 1)[-1].lower()
+    m = re.search(r"(?:^|[_-])box(\d*|prod)(?=[_.-]|$)", name)
+    if not m:
+        return 3
+    return 0 if m.group(1) == "1" else 1 if m.group(1) == "prod" else 2
+
+
 def build(out_dir, src=None):
     data = {name: read_csv(name, src) for name in FILES}
 
@@ -150,9 +160,10 @@ def build(out_dir, src=None):
         for set_num, info in json.loads(BRICKSET_PHOTOS.read_text(encoding="utf-8"))["sets"].items():
             if not info["imgs"]:
                 continue
-            details[set_num]["imgs"] = info["imgs"]
-            if "box1" in info["imgs"][0][0].rsplit("/", 1)[-1].lower() and set_num in extra:
-                extra[set_num]["box"] = info["imgs"][0]  # foto della scatola, per gli elenchi
+            imgs = sorted(info["imgs"], key=box_rank)  # la scatola sempre per prima
+            details[set_num]["imgs"] = imgs
+            if box_rank(imgs[0]) < 3 and set_num in extra:
+                extra[set_num]["box"] = imgs[0]  # foto della scatola, per gli elenchi
     extra_file = {"generated": generated, "source": "Brickset", "imgBase": BRICKSET_IMG,
                   "detailFiles": DETAIL_FILES, "sets": extra}
     files = [("catalog.json", catalog), ("minifigs.json", minifigs), ("extra.json", extra_file)]
