@@ -7,9 +7,9 @@ volta: ogni volta aggiorna gli anni piu' recenti e quelli non ancora scaricati
 - brickset-testi.json: descrizione e tag (l'app li carica solo aprendo la scheda);
 - brickset-foto.json: le foto in piu' di ogni set, la scatola per prima.
 Le foto si chiedono con getAdditionalImages, che non conta nel limite di getSets:
-qualche centinaio al giorno, partendo dai set piu' nuovi.
+1500 set al giorno, partendo dai set piu' nuovi, solo dal 2000 in poi.
 
-Uso: BRICKSET_API_KEY=... python scripts/fetch_brickset.py [--max-calls 60] [--max-images 300]
+Uso: BRICKSET_API_KEY=... python scripts/fetch_brickset.py [--max-calls 60] [--max-images 1500]
 """
 import argparse
 import json
@@ -33,6 +33,7 @@ IMG_PREFIX = "https://images.brickset.com/sets/"
 PHOTOS_REFRESH_DAYS = 30  # i set appena usciti ricevono foto nuove: si ricontrollano dopo un mese
 PHOTOS_RETRY_DAYS = 7  # un set la cui richiesta di foto e' fallita si riprova dopo una settimana
 PHOTOS_MAX_ERRORS = 3  # tanti errori di fila = limite o rete: ci si ferma fino a domani
+PHOTOS_FIRST_YEAR = 2000  # per i set piu' vecchi le foto in piu' non si chiedono
 
 
 def call(key, params, method="getSets"):
@@ -171,7 +172,7 @@ def photos_todo(years, photos, today):
     never, stale = [], []
     for year, info in years.items():
         for set_num, s in info["sets"].items():
-            if not s.get("id") or not s.get("nimg"):
+            if not s.get("id") or not s.get("nimg") or int(year) < PHOTOS_FIRST_YEAR:
                 continue
             key = (s.get("launch") or year, set_num)
             done = photos.get(set_num)
@@ -225,7 +226,7 @@ def load(path, field):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--max-calls", type=int, default=60)
-    parser.add_argument("--max-images", type=int, default=300)
+    parser.add_argument("--max-images", type=int, default=1500)
     args = parser.parse_args()
     key = os.environ.get("BRICKSET_API_KEY", "").strip()
     if not key:
