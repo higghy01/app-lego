@@ -1462,6 +1462,7 @@ function renderBackup() {
   setTab("backup");
   const count = Object.keys(state.collection).length;
   const last = localStorage.getItem(BACKUP_KEY);
+  const dark = document.documentElement.dataset.theme === "dark";
   $("#view").innerHTML = `
     <div class="card">
       <h2>Salva una copia della collezione</h2>
@@ -1477,6 +1478,14 @@ function renderBackup() {
       <button class="btn full" id="import-btn">Importa backup</button>
       ${localStorage.getItem(PREV_KEY) ? `<button class="btn full" id="undo-import" style="margin-top:8px">Annulla l'ultimo import</button>` : ""}
     </div>
+    <div class="card">
+      <h2>Aspetto</h2>
+      <p class="small">L'app si apre sempre chiara. Se preferisci i colori scuri, scegli Scuro.</p>
+      <div class="chips" id="theme-pick">
+        <button type="button" class="chip${dark ? "" : " on"}" data-theme-pick="chiaro">☀️ Chiaro</button>
+        <button type="button" class="chip${dark ? " on" : ""}" data-theme-pick="scuro">🌙 Scuro</button>
+      </div>
+    </div>
     <div class="card small muted">
       Catalogo: ${fmtNum(state.catalog.sets.length)} set, aggiornato il ${fmtDate(state.catalog.generated)}.<br>
       Dati del catalogo da <a href="https://rebrickable.com" target="_blank" rel="noopener">Rebrickable</a>; codici a barre, età e prezzi da <a href="https://brickset.com" target="_blank" rel="noopener">Brickset</a>. Si aggiorna da solo.
@@ -1485,10 +1494,23 @@ function renderBackup() {
   $("#import-btn").addEventListener("click", () => $("#import").click());
   $("#import").addEventListener("change", importBackup);
   if ($("#undo-import")) $("#undo-import").addEventListener("click", undoImport);
+  $("#theme-pick").addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-theme-pick]");
+    if (b) setTheme(b.dataset.themePick);
+  });
   prepareBackupPhotos();
   loadPhotoCounts().then((c) => {
     if ($("#backup-photos")) $("#backup-photos").textContent = Object.values(c).reduce((a, b) => a + b, 0);
   });
+}
+
+// Tema: chiaro di base, anche se il telefono è in modalità scura. Lo scuro solo se scelto qui.
+// La scelta si legge già in index.html, così l'app non lampeggia all'apertura.
+function setTheme(name) {
+  if (name === "scuro") document.documentElement.dataset.theme = "dark";
+  else delete document.documentElement.dataset.theme;
+  try { localStorage.setItem("lego-tema", name); } catch {}
+  document.querySelectorAll("#theme-pick [data-theme-pick]").forEach((b) => b.classList.toggle("on", b.dataset.themePick === name));
 }
 
 // Le foto si preparano appena si apre la scheda Backup: così al tocco di "Esporta"

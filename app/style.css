@@ -1,6 +1,6 @@
 /* ---------- Colori e misure ---------- */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --red: #da291c;
   --red-dark: #b81f14;
   --yellow: #ffcf00;
@@ -25,25 +25,24 @@
   --st-apart: #b23b3b;
   --font: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f0e0d;
-    --card: #1d1c1a;
-    --card-2: #2a2826;
-    --text: #f4f2ee;
-    --muted: #a8a39c;
-    --line: #34312e;
-    --star-off: var(--line);
-    --accent: #5aa9ff;
-    --ok: #4cc26b;
-    --shadow: 0 1px 2px rgba(0, 0, 0, .4);
-    --st-none: #8e8a85;
-    --st-wish: #e0a030;
-    --st-owned: #3d8fe0;
-    --st-building: #9d6be0;
-    --st-built: #34a853;
-    --st-apart: #d0574f;
-  }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f0e0d;
+  --card: #1d1c1a;
+  --card-2: #2a2826;
+  --text: #f4f2ee;
+  --muted: #a8a39c;
+  --line: #34312e;
+  --star-off: var(--line);
+  --accent: #5aa9ff;
+  --ok: #4cc26b;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+  --st-none: #8e8a85;
+  --st-wish: #e0a030;
+  --st-owned: #3d8fe0;
+  --st-building: #9d6be0;
+  --st-built: #34a853;
+  --st-apart: #d0574f;
 }
 
 /* ---------- Base ---------- */
@@ -299,9 +298,7 @@ li.empty { list-style: none; }
 .scan-frame { position: absolute; left: 10%; right: 10%; top: 30%; bottom: 30%; border: 3px solid rgba(255,255,255,.9); border-radius: 12px; box-shadow: 0 0 0 999px rgba(0,0,0,.3); }
 
 /* ---------- Avvisi in tema scuro ---------- */
-@media (prefers-color-scheme: dark) {
-  .warn, .install-hint { background: #3a3110; color: #fbe9a6; }
-}
+:root[data-theme="dark"] .warn, :root[data-theme="dark"] .install-hint { background: #3a3110; color: #fbe9a6; }
 
 /* ---------- Movimento leggero ---------- */
 .btn, .chip, .status-btn, .item, .tabs a span, .top .back {
@@ -358,30 +355,28 @@ li.empty { list-style: none; }
   --chip-on: var(--lego-blue);
   --chip-on-text: #fff;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0d2240;               /* blu notte */
-    --card: #163156;
-    --card-2: #1f3d66;
-    --line: #2d4d78;
-    --text: #f4f6fb;
-    --muted: #a9b8cc;
-    --on-bg: #f4f6fb;
-    --on-bg-muted: #a9b8cc;
-    --on-bg-link: #7cc0ff;
-    --accent: #7cc0ff;
-    --stud: rgba(255, 255, 255, .035);
-    --stud-edge: rgba(0, 0, 0, .18);
-    --shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 4px 14px rgba(0, 0, 0, .25);
-    --st-none: #6f6b66;          /* scritte bianche leggibili anche sui colori degli stati */
-    --st-wish: #b8620a;
-    --st-owned: #1f74c4;
-    --st-building: #8a52d6;
-    --st-built: #1c8a3e;
-    --st-apart: #b8443c;
-    --chip-on: var(--yellow);
-    --chip-on-text: #1d1b19;
-  }
+:root[data-theme="dark"] {
+  --bg: #0d2240;               /* blu notte */
+  --card: #163156;
+  --card-2: #1f3d66;
+  --line: #2d4d78;
+  --text: #f4f6fb;
+  --muted: #a9b8cc;
+  --on-bg: #f4f6fb;
+  --on-bg-muted: #a9b8cc;
+  --on-bg-link: #7cc0ff;
+  --accent: #7cc0ff;
+  --stud: rgba(255, 255, 255, .035);
+  --stud-edge: rgba(0, 0, 0, .18);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 4px 14px rgba(0, 0, 0, .25);
+  --st-none: #6f6b66;          /* scritte bianche leggibili anche sui colori degli stati */
+  --st-wish: #b8620a;
+  --st-owned: #1f74c4;
+  --st-building: #8a52d6;
+  --st-built: #1c8a3e;
+  --st-apart: #b8443c;
+  --chip-on: var(--yellow);
+  --chip-on-text: #1d1b19;
 }
 
 /* Sfondo con i bottoncini del mattoncino */
@@ -398,7 +393,7 @@ body {
 
 /* Barra in alto rossa con una riga gialla, come una fila di mattoncini */
 .top { box-shadow: 0 4px 0 var(--yellow), 0 6px 14px rgba(0, 0, 0, .18); }
-@media (prefers-color-scheme: dark) { .top { box-shadow: 0 4px 0 var(--yellow), 0 6px 14px rgba(0, 0, 0, .4); } }
+:root[data-theme="dark"] .top { box-shadow: 0 4px 0 var(--yellow), 0 6px 14px rgba(0, 0, 0, .4); }
 main { padding-top: 20px; }
 
 /* Menu in basso: ogni scheda attiva ha il suo colore LEGO */
@@ -447,9 +442,7 @@ main { padding-top: 20px; }
 /* Avvisi: su sfondo giallo diventano bianchi con un bordo giallo scuro */
 .install-hint { background: #fff; border-bottom: 3px solid #e0b800; margin-top: 4px; }
 .warn { border-left: 5px solid #e0b800; }
-@media (prefers-color-scheme: dark) {
-  .install-hint { background: #3a3110; border-bottom-color: #8a7000; }
-}
+:root[data-theme="dark"] .install-hint { background: #3a3110; border-bottom-color: #8a7000; }
 
 /* ---------- Temi (categorie) ---------- */
 .tabs a[data-tab=temi] { --tab-c: var(--lego-orange); }
