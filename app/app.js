@@ -45,6 +45,12 @@ const fmtDate = (iso) => {
   return d && !isNaN(d) ? d.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" }) : "";
 };
 
+// Durata in minuti scritta come "2 h 15 min".
+const fmtDuration = (min) => {
+  const h = Math.floor(min / 60), m = min % 60;
+  return [h ? `${fmtNum(h)} h` : "", m || !h ? `${m} min` : ""].filter(Boolean).join(" ");
+};
+
 function debounce(fn, ms) {
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
@@ -116,7 +122,7 @@ function entry(setNum) {
 function updateEntry(setNum, changes) {
   const e = { ...entry(setNum), ...changes, u: new Date().toISOString() };
   state.collectionVersion++;
-  if (e.s === "none" && !e.f && !e.n && !e.d && !e.v) delete state.collection[setNum];
+  if (e.s === "none" && !e.f && !e.n && !e.d && !e.v && !e.t && !e.w) delete state.collection[setNum];
   else state.collection[setNum] = e;
   return saveCollection();
 }
@@ -410,6 +416,20 @@ function setItem(s) {
     <div class="info">${releaseBadge(s)}<div class="name">${esc(s.name)}</div><div class="meta">${esc(meta)}</div>${badge}${e.v ? `<span class="stars-small" aria-label="Voto ${e.v} su 5">${starText(e.v)}</span>` : ""}</div>
     ${state.photoCounts[s.setNum] ? '<span class="fav" title="Ha foto">📷</span>' : ""}${e.f ? '<span class="fav">❤️</span>' : ""}
   </a></li>`;
+}
+
+// Persone con cui ha costruito (campo "w"): tutti i nomi già usati, i più frequenti per primi.
+function knownBuddies() {
+  const count = new Map();
+  for (const e of Object.values(state.collection)) for (const name of e.w || []) count.set(name, (count.get(name) || 0) + 1);
+  return [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "it")).map(([name]) => name);
+}
+
+function buddyChips(w) {
+  const mine = w || [];
+  const others = knownBuddies().filter((name) => !mine.includes(name));
+  return mine.map((name) => `<button type="button" class="chip on" data-buddy="${esc(name)}" aria-label="Togli ${esc(name)}">${esc(name)} ✕</button>`).join("")
+    + others.map((name) => `<button type="button" class="chip" data-buddy="${esc(name)}" aria-label="Aggiungi ${esc(name)}">+ ${esc(name)}</button>`).join("");
 }
 
 // Voto da 1 a 5 stelle, dato da lei ai set costruiti (campo "v" nella collezione).
@@ -867,6 +887,7 @@ function renderDetail(setNum) {
   const val = (v) => (v == null || v === "" ? NA : esc(v));
   const showDate = e.s === "built" || e.s === "apart" || e.d;
   const showRating = e.s === "built" || e.s === "apart" || e.v;
+  const showBuild = ["building", "built", "apart"].includes(e.s) || e.t || e.w;
 
   $("#view").innerHTML = `
     <div id="gallery">${galleryHtml(firstSlides(s))}</div>
@@ -899,6 +920,27 @@ function renderDetail(setNum) {
         <label id="rating-label">Il mio voto</label>
         <div class="stars" role="group" aria-labelledby="rating-label">${starButtons(e.v)}</div>
         <div class="small muted" id="rating-hint">${e.v ? "Tocca di nuovo la stessa stella per togliere il voto." : "Quanto ti è piaciuto costruirlo?"}</div>
+      </div>
+      <div id="build-fields" ${showBuild ? "" : "hidden"}>
+        <div class="field">
+          <label id="time-label">Tempo totale di costruzione</label>
+          <div class="time-row" role="group" aria-labelledby="time-label">
+            <input type="number" id="time-h" inputmode="numeric" min="0" max="999" placeholder="0" value="${e.t ? Math.floor(e.t / 60) : ""}" aria-label="Ore"><span>ore</span>
+            <input type="number" id="time-m" inputmode="numeric" min="0" max="59" placeholder="0" value="${e.t ? e.t % 60 : ""}" aria-label="Minuti"><span>min</span>
+          </div>
+          <div class="time-add">
+            <span class="small muted">Aggiungi:</span>
+            <button type="button" class="chip" data-add-min="15">+15 min</button>
+            <button type="button" class="chip" data-add-min="30">+30 min</button>
+            <button type="button" class="chip" data-add-min="60">+1 ora</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="buddy-new">Con chi l'ho costruito</label>
+          <div class="chips buddies" id="buddies">${buddyChips(e.w)}</div>
+          <div class="search-row"><input type="text" id="buddy-new" maxlength="30" autocomplete="off" placeholder="Scrivi un nome…" enterkeyhint="done"><button class="btn" id="buddy-add" type="button">Aggiungi</button></div>
+          <div class="small muted">Tocca un nome per aggiungerlo o toglierlo.</div>
+        </div>
       </div>
       <div class="field">
         <label for="notes">Note</label>
@@ -959,7 +1001,7 @@ function renderDetail(setNum) {
   document.querySelectorAll(".status-btn").forEach((btn) => btn.addEventListener("click", () => {
     const st = btn.dataset.status;
     const changes = { s: st };
-    if (["none", "wish", "owned"].includes(st)) changes.d = changes.v = undefined; // non ancora costruito: niente data né voto
+    if (["none", "wish", "owned"].includes(st)) changes.d = changes.v = changes.t = changes.w = undefined; // non ancora costruito: niente data, voto, tempo, persone
     const ok = updateEntry(setNum, changes);
     document.querySelectorAll(".status-btn").forEach((b) => { b.className = "status-btn" + (b.dataset.status === st ? " on st-" + st : ""); });
     const cur = entry(setNum);
@@ -967,6 +1009,9 @@ function renderDetail(setNum) {
     $("#built-date").value = cur.d || "";
     showStars(cur.v);
     $("#rating-field").hidden = !(st === "built" || st === "apart" || cur.v);
+    $("#build-fields").hidden = !(["building", "built", "apart"].includes(st) || cur.t || cur.w);
+    showTime(cur.t);
+    $("#buddies").innerHTML = buddyChips(cur.w);
     if (ok) flash();
   }));
   const showStars = (v) => {
@@ -982,6 +1027,51 @@ function renderDetail(setNum) {
     showStars(v);
     flash();
   });
+  // Tempo di costruzione: salvato in minuti (campo "t").
+  const showTime = (t) => {
+    $("#time-h").value = t ? Math.floor(t / 60) : "";
+    $("#time-m").value = t ? t % 60 : "";
+  };
+  const saveTime = (t) => {
+    t = Math.min(Math.max(Math.round(t) || 0, 0), 999 * 60 + 59) || undefined;
+    if (entry(setNum).t === t) return;
+    if (updateEntry(setNum, { t })) flash();
+  };
+  const typedTime = () => (Number($("#time-h").value) || 0) * 60 + (Number($("#time-m").value) || 0);
+  ["#time-h", "#time-m"].forEach((sel) => {
+    $(sel).addEventListener("input", () => { pendingSave = () => { pendingSave = null; saveTime(typedTime()); }; saveTimeLater(); });
+    $(sel).addEventListener("change", () => { pendingSave = null; saveTime(typedTime()); showTime(entry(setNum).t); });
+  });
+  const saveTimeLater = debounce(() => { if (pendingSave) pendingSave(); }, 600);
+  document.querySelectorAll("[data-add-min]").forEach((btn) => btn.addEventListener("click", () => {
+    pendingSave = null;
+    saveTime(typedTime() + Number(btn.dataset.addMin));
+    showTime(entry(setNum).t);
+  }));
+  // Con chi: nomi già usati in altri set si scelgono con un tocco, oppure se ne scrive uno nuovo.
+  const setBuddies = (w) => {
+    if (!updateEntry(setNum, { w: w.length ? w : undefined })) return;
+    $("#buddies").innerHTML = buddyChips(w);
+    flash();
+  };
+  $("#buddies").addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-buddy]");
+    if (!btn) return;
+    const name = btn.dataset.buddy, w = entry(setNum).w || [];
+    setBuddies(w.includes(name) ? w.filter((x) => x !== name) : [...w, name]);
+  });
+  const addBuddy = () => {
+    const input = $("#buddy-new");
+    const typed = input.value.trim().replace(/\s+/g, " ");
+    input.value = "";
+    if (!typed) return;
+    // Se il nome esiste già (anche con maiuscole diverse) si usa quello, così non ci sono doppioni.
+    const name = knownBuddies().find((x) => norm(x) === norm(typed)) || typed;
+    const w = entry(setNum).w || [];
+    if (!w.includes(name)) setBuddies([...w, name]);
+  };
+  $("#buddy-add").addEventListener("click", addBuddy);
+  $("#buddy-new").addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); addBuddy(); ev.target.blur(); } });
   $("#built-date").addEventListener("change", (ev) => { if (updateEntry(setNum, { d: ev.target.value || undefined })) flash(); });
   $("#today").addEventListener("click", () => {
     $("#built-date").value = todayLocal();
@@ -1308,6 +1398,12 @@ function statsCard() {
   const rated = entries.filter(([, e]) => e.v);
   const avg = rated.length ? rated.reduce((a, [, e]) => a + e.v, 0) / rated.length : 0;
   const best = rated.filter(([, e]) => e.v === 5).length;
+  const timed = entries.filter(([, e]) => e.t);
+  const totalTime = timed.reduce((a, [, e]) => a + e.t, 0);
+  const buddies = knownBuddies().slice(0, 3).map((name) => {
+    const n = entries.filter(([, e]) => e.w?.includes(name)).length;
+    return `${esc(name)} (${n === 1 ? "1 set" : n + " set"})`;
+  });
   const tile = (n, label, id = "") => `<div class="stat"${id ? ` id="${id}"` : ""}><b>${n}</b><span>${label}</span></div>`;
   return `<div class="card">
     <h2>Le mie statistiche</h2>
@@ -1320,7 +1416,10 @@ function statsCard() {
       ${tile('<span class="na">…</span>', "valore indicativo", "stat-value")}
       ${tile(rated.length ? `${avg.toLocaleString("it-IT", { maximumFractionDigits: 1 })} ★` : '<span class="na">–</span>', "voto medio")}
       ${tile(fmtNum(best), "set da 5 stelle")}
+      ${tile(totalTime ? fmtDuration(totalTime) : '<span class="na">–</span>', "tempo di costruzione")}
     </div>
+    ${timed.length ? `<p class="small muted">Tempo calcolato su ${timed.length === 1 ? "1 set" : timed.length + " set"} con il tempo segnato${timed.length > 1 ? `: in media ${fmtDuration(Math.round(totalTime / timed.length))} per set` : ""}.</p>` : ""}
+    ${buddies.length ? `<p class="small muted">Costruito più spesso con: ${buddies.join(", ")}.</p>` : ""}
     ${rated.length ? `<p class="small muted">Voto medio calcolato su ${rated.length === 1 ? "1 set votato" : rated.length + " set votati"}.</p>` : ""}
     ${missingParts ? `<p class="small muted">Pezzi non disponibili per ${missingParts} ${missingParts === 1 ? "set costruito" : "set costruiti"}: non sono contati.</p>` : ""}
     <p class="small muted" id="value-note"></p>
@@ -1450,6 +1549,11 @@ function cleanCollection(raw) {
     if (typeof e.n === "string" && e.n.trim()) clean.n = e.n;
     if (e.f === true) clean.f = true;
     if (Number.isInteger(e.v) && e.v >= 1 && e.v <= 5) clean.v = e.v;
+    if (Number.isInteger(e.t) && e.t > 0 && e.t < 60000) clean.t = e.t;
+    if (Array.isArray(e.w)) {
+      const w = [...new Set(e.w.filter((x) => typeof x === "string").map((x) => x.trim().slice(0, 30)).filter(Boolean))];
+      if (w.length) clean.w = w;
+    }
     if (typeof e.u === "string") clean.u = e.u;
     out[num] = clean;
   }
