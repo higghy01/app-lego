@@ -787,6 +787,12 @@ async function fillGallery(s) {
   setupGallery(el.querySelector(".gallery"));
 }
 
+// Ricerca del set sul sito LEGO italiano: lì ci sono descrizione in italiano, prezzo e
+// disponibilità di oggi. Solo un link: i termini del sito vietano di copiarne i dati.
+function legoUrl(s) {
+  return `https://www.lego.com/it-it/search?q=${encodeURIComponent(s.base)}`;
+}
+
 function shopUrl(shop, s) {
   const q = encodeURIComponent(`LEGO ${s.base} ${s.name}`);
   return shop === "amazon" ? `https://www.amazon.it/s?k=${q}` : `https://www.ebay.it/sch/i.html?_nkw=${q}`;
@@ -838,10 +844,11 @@ function renderDetail(setNum) {
       <h2>Prezzo</h2>
       <div id="x-lego-price"><div>Prezzo LEGO in euro ${NA}</div></div>
       <div class="shop-row">
+        <a class="btn shop-lego" href="${esc(legoUrl(s))}" target="_blank" rel="noopener">🧱 Vedi sul sito LEGO</a>
         <a class="btn" href="${esc(shopUrl("amazon", s))}" target="_blank" rel="noopener">🔎 Cerca su Amazon</a>
         <a class="btn" href="${esc(shopUrl("ebay", s))}" target="_blank" rel="noopener">🔎 Cerca su eBay</a>
       </div>
-      <div class="small muted">I pulsanti aprono la ricerca del set sul sito: lì trovi i prezzi di oggi, anche dell'usato.</div>
+      <div class="small muted">I pulsanti aprono la ricerca del set sul sito: sul sito LEGO trovi prezzo e disponibilità di oggi, su Amazon ed eBay anche l'usato.</div>
     </div>` : ""}
 
     <div class="card" style="margin-top:14px">
@@ -992,10 +999,10 @@ function renderDetail(setNum) {
     loadDetails(s.setNum).then((d) => {
       const el = $("#x-desc");
       if (!el) return;
-      if (!d || !d.desc) { el.innerHTML = NA; return; }
+      if (!d || !d.desc) { el.innerHTML = `${NA}. <a href="${esc(legoUrl(s))}" target="_blank" rel="noopener">Cercala sul sito LEGO</a>`; return; }
       el.classList.remove("muted", "small");
       el.innerHTML = `<div class="desc">${d.desc.split("\n").map((p) => `<p>${esc(p)}</p>`).join("")}</div>
-        <div class="small muted">Testo in inglese, da Brickset.</div>`;
+        <div class="small muted">Testo in inglese, da Brickset. <a href="${esc(legoUrl(s))}" target="_blank" rel="noopener">Leggilo in italiano sul sito LEGO</a></div>`;
       const box = el.querySelector(".desc");
       if (box.scrollHeight > box.clientHeight + 4) {
         el.insertAdjacentHTML("beforeend", `<button class="btn full" type="button" id="desc-more">Leggi tutto</button>`);

@@ -10,6 +10,7 @@ import gzip
 import io
 import json
 import os
+import re
 import sys
 import urllib.request
 from collections import defaultdict
@@ -142,6 +143,8 @@ def build(out_dir, src=None):
     if BRICKSET_TEXTS.exists():
         for year in json.loads(BRICKSET_TEXTS.read_text(encoding="utf-8"))["years"].values():
             for set_num, text in year["sets"].items():
+                if text.get("desc"):  # "\\u0026" letterali rimasti nei testi gia' scaricati
+                    text["desc"] = re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), text["desc"])
                 details[set_num].update(text)
     if BRICKSET_PHOTOS.exists():
         for set_num, info in json.loads(BRICKSET_PHOTOS.read_text(encoding="utf-8"))["sets"].items():
