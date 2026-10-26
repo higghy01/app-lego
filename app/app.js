@@ -80,8 +80,10 @@ window.imgFallback = (img) => {
   const full = img.dataset.full;
   if (full && img.src !== full) { img.src = full; return; }
   const box = document.createElement("div");
-  box.className = img.className.includes("hero") ? "noimg" : "thumb";
-  box.textContent = "Immagine non disponibile";
+  // Nelle caselle dei temi resta il riquadro con il mattoncino disegnato, senza scritta.
+  const tile = img.classList.contains("tile-img");
+  box.className = tile ? "tile-img" : img.className.includes("hero") ? "noimg" : "thumb";
+  if (!tile) box.textContent = "Immagine non disponibile";
   img.replaceWith(box);
 };
 
@@ -588,6 +590,33 @@ function listImg(s, cls = "thumb") {
 
 const isRealSet = (s) => s.parts != null || s.figs;
 
+// Copertina di ogni categoria: un set simbolo scelto a mano (quello che tutti riconoscono) e un colore tutto nostro.
+// Niente loghi dei marchi: la foto è quella del set dal catalogo Rebrickable, come nel resto dell'app.
+// Se il set non c'è nel catalogo, o il tema è nuovo, si usa il set più recente come prima.
+const THEME_COVERS = {
+  "Animal Crossing": ["77050-1", "#7cc26a"], "Architecture": ["21061-1", "#8f9aa6"], "Bluey": ["11203-1", "#5aa9e6"],
+  "Botanicals": ["10328-1", "#e46a8a"], "BrickLink Designer Program": ["910029-1", "#8a7a6a"], "Brickheadz": ["40677-1", "#f2a33a"],
+  "Chinese Traditional Festivals": ["80111-1", "#d9433b"], "City": ["60380-1", "#3c7fd6"], "Classic": ["11033-1", "#f2c230"], "Collectible Minifigures": ["71048-13", "#f08a24"],
+  "Creator": ["31120-1", "#e8742f"], "DOTS": ["41806-1", "#c77ddb"], "Despicable Me 4": ["75583-1", "#f5cf2a"],
+  "Disney": ["43222-1", "#6a7fdb"], "Dreamzzz": ["71486-1", "#7d5bd6"], "Duplo": ["10994-1", "#ee5a3c"],
+  "Fortnite": ["77073-1", "#4fa3f7"], "Friends": ["41748-1", "#e95fa8"], "Gabby's Dollhouse": ["10788-1", "#ef7fb8"],
+  "Harry Potter": ["76419-1", "#a0473f"], "Horizon Adventures": ["77037-1", "#e0863a"], "Icons": ["10294-1", "#3d5a80"],
+  "Jurassic World": ["76956-1", "#6c9a3c"], "LEGO Art": ["31203-1", "#4aa3a0"], "LEGO Ideas and CUUSOO": ["21318-1", "#f0b429"],
+  "Minecraft": ["21265-1", "#5d9b3a"], "Modular Buildings": ["10326-1", "#b07a4f"], "Monkie Kid": ["80039-1", "#e4a12c"],
+  "Nike": ["43008-1", "#555b66"], "Ninjago": ["71799-1", "#2f9e6e"], "One Piece": ["75639-1", "#e0483a"],
+  "Pokémon": ["72152-1", "#f6c445"], "Seasonal": ["10293-1", "#c9433f"], "Sonic The Hedgehog": ["76994-1", "#2f6fdb"],
+  "Speed Champions": ["76924-1", "#d23b3b"], "Star Wars": ["75192-1", "#4a4f5a"], "Super Heroes DC": ["76240-1", "#2c4a8a"],
+  "Super Heroes Marvel": ["76269-1", "#cf3737"], "Super Mario": ["71411-1", "#e5392f"], "Technic": ["42143-1", "#5f6b78"],
+  "The Legend of Zelda": ["77092-1", "#3e9a6a"], "Wednesday": ["76780-1", "#6b5b7b"], "Wicked": ["75684-1", "#3faa5c"],
+};
+// Colore per i temi senza colore scelto: sempre lo stesso per lo stesso nome.
+function themeColor(name) {
+  if (THEME_COVERS[name]) return THEME_COVERS[name][1];
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  return `hsl(${h} 55% 52%)`;
+}
+
 // Temi principali con numero di set e set più recente (calcolati una volta sola).
 let themeIndexCache = null;
 function themeIndex() {
@@ -613,6 +642,10 @@ function themeIndex() {
     if (out && s.img && better) t.newest = s;
   }
   const all = [...info.values()].filter((t) => t.count);
+  for (const t of all) {
+    const cover = state.catalog.bySetNum.get(THEME_COVERS[t.theme.name]?.[0]);
+    t.cover = cover?.img && cover.root === t.theme.id ? cover : null;
+  }
   const main = (t) => t.recent && !NOT_BUILDING.includes(t.theme.name);
   themeIndexCache = { sig, active: all.filter(main), old: all.filter((t) => !main(t)), themes };
   return themeIndexCache;
@@ -623,9 +656,10 @@ function renderThemes() {
   setTab("temi");
   const { active, old } = themeIndex();
   const tile = (t) => {
-    const s = t.newest;
-    const img = s ? listImg(s, "tile-img") : '<div class="tile-img"></div>';
-    return `<a class="tile" href="#/tema/${t.theme.id}">${img}<span class="tile-name">${esc(t.theme.name)}</span><span class="tile-count">${fmtNum(t.count)} set</span></a>`;
+    // Il set simbolo si mostra con la foto del set montato: il suo sfondo bianco prende il colore del tema.
+    const s = t.cover || t.newest;
+    const img = t.cover ? `<span class="tile-cover">${imgTag(s, "tile-img")}</span>` : s ? listImg(s, "tile-img") : '<div class="tile-img"></div>';
+    return `<a class="tile" href="#/tema/${t.theme.id}" style="--tc:${themeColor(t.theme.name)}">${img}<span class="tile-name">${esc(t.theme.name)}</span><span class="tile-count">${fmtNum(t.count)} set</span></a>`;
   };
   const row = (t) => `<li><a class="item compact" href="#/tema/${t.theme.id}"><div class="info"><div class="name">${esc(t.theme.name)}</div><div class="meta">${fmtNum(t.count)} set · ${t.from === t.to ? t.from ?? "" : `${t.from}–${t.to}`}</div></div></a></li>`;
   $("#view").innerHTML = `
