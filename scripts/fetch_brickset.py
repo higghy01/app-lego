@@ -113,6 +113,8 @@ class _Text(HTMLParser):
 
 def plain_text(html):
     """La descrizione arriva in HTML: teniamo solo il testo, a paragrafi."""
+    # Brickset a volte lascia sequenze JSON letterali come "\\u0026" (&) nel testo.
+    html = re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), html)
     parser = _Text()
     parser.feed(html)
     parser.close()
