@@ -140,10 +140,15 @@ def short_img(url):
 
 
 def order_photos(images):
-    """Prima le foto della scatola (Box1, poi boxprod, poi Box2, Box5...), poi le altre come le da' Brickset."""
+    """Prima le foto della scatola (Box1 o Box_front, poi boxprod, poi Box2, Box5..., il retro per ultimo), poi le altre come le da' Brickset."""
     def box_rank(img):
-        m = re.search(r"(?:^|[_-])box(\d*|prod)(?=[_.-]|$)", img[0].rsplit("/", 1)[-1].lower())
-        return 3 if not m else 0 if m.group(1) == "1" else 1 if m.group(1) == "prod" else 2
+        name = img[0].rsplit("/", 1)[-1].lower()
+        m = re.search(r"(?:^|[_-])box(\d*|prod)(?=[_.-]|$)", name)
+        if not m:
+            return 3
+        if m.group(1) == "1" or "front" in name:
+            return 0
+        return 1 if m.group(1) == "prod" else 2.5 if "back" in name else 2
     return sorted(images, key=box_rank)
 
 
