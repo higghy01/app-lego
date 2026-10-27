@@ -1219,10 +1219,43 @@ function openPhoto(src, id, after) {
 
 let scanControls = null;
 let scanGen = 0; // ogni avvio/stop cambia numero: una fotocamera avviata "in ritardo" viene subito spenta
+// Su iPhone ogni nuova richiesta della fotocamera fa ricomparire il permesso:
+// teniamo la stessa fotocamera per un po' (in pausa) e la riusiamo.
+let camStream = null;
+let camOffTimer = null;
+const CAM_KEEP_MS = 5 * 60 * 1000;
+
+function camAlive() {
+  return camStream && camStream.getVideoTracks().some((t) => t.readyState === "live");
+}
+
+async function getCam() {
+  clearTimeout(camOffTimer);
+  if (!camAlive()) {
+    releaseCam();
+    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+  }
+  camStream.getVideoTracks().forEach((t) => { t.enabled = true; });
+  return camStream;
+}
+
+function releaseCam() {
+  clearTimeout(camOffTimer);
+  if (camStream) camStream.getTracks().forEach((t) => t.stop());
+  camStream = null;
+}
 
 function stopScan() {
   scanGen++;
   if (scanControls) { try { scanControls.stop(); } catch {} scanControls = null; }
+  const v = $("#cam");
+  if (v) v.srcObject = null;
+  // In pausa (spia spenta), poi spenta del tutto se non si torna a scansionare.
+  if (camStream) {
+    camStream.getVideoTracks().forEach((t) => { t.enabled = false; });
+    clearTimeout(camOffTimer);
+    camOffTimer = setTimeout(releaseCam, CAM_KEEP_MS);
+  }
 }
 
 function loadScript(src) {
@@ -1277,17 +1310,21 @@ async function startScan() {
     const gen = scanGen;
     await loadScript("vendor/zxing-browser.min.js");
     if (gen !== scanGen) return;
+    const stream = await getCam();
+    if (gen !== scanGen || location.hash !== "#/scansiona") { stopScan(); return; }
+    const video = $("#cam");
+    video.srcObject = stream;
     const reader = new ZXingBrowser.BrowserMultiFormatReader();
-    const controls = await reader.decodeFromConstraints(
-      { video: { facingMode: "environment" } }, $("#cam"),
+    const controls = await reader.decodeFromVideoElement(video,
       (result, err, ctrl) => {
         if (!result) return;
         ctrl.stop();
         scanControls = null;
+        stopScan();
         if (navigator.vibrate) navigator.vibrate(80);
         handleCode(result.getText(), false);
       });
-    if (gen !== scanGen || location.hash !== "#/scansiona") { controls.stop(); return; }
+    if (gen !== scanGen || location.hash !== "#/scansiona") { controls.stop(); stopScan(); return; }
     scanControls = controls;
   } catch (err) {
     if (!$("#scan-box")) return;
