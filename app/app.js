@@ -1220,17 +1220,14 @@ function openPhoto(src, id, after) {
 let scanControls = null;
 let scanGen = 0; // ogni avvio/stop cambia numero: una fotocamera avviata "in ritardo" viene subito spenta
 // Su iPhone ogni nuova richiesta della fotocamera fa ricomparire il permesso:
-// teniamo la stessa fotocamera per un po' (in pausa) e la riusiamo.
+// teniamo la stessa fotocamera (in pausa) finché l'app resta aperta e la riusiamo.
 let camStream = null;
-let camOffTimer = null;
-const CAM_KEEP_MS = 5 * 60 * 1000;
 
 function camAlive() {
   return camStream && camStream.getVideoTracks().some((t) => t.readyState === "live");
 }
 
 async function getCam() {
-  clearTimeout(camOffTimer);
   if (!camAlive()) {
     releaseCam();
     camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
@@ -1240,7 +1237,6 @@ async function getCam() {
 }
 
 function releaseCam() {
-  clearTimeout(camOffTimer);
   if (camStream) camStream.getTracks().forEach((t) => t.stop());
   camStream = null;
 }
@@ -1250,12 +1246,8 @@ function stopScan() {
   if (scanControls) { try { scanControls.stop(); } catch {} scanControls = null; }
   const v = $("#cam");
   if (v) v.srcObject = null;
-  // In pausa (spia spenta), poi spenta del tutto se non si torna a scansionare.
-  if (camStream) {
-    camStream.getVideoTracks().forEach((t) => { t.enabled = false; });
-    clearTimeout(camOffTimer);
-    camOffTimer = setTimeout(releaseCam, CAM_KEEP_MS);
-  }
+  // In pausa: la spia si spegne ma il permesso resta valido.
+  if (camStream) camStream.getVideoTracks().forEach((t) => { t.enabled = false; });
 }
 
 function loadScript(src) {
