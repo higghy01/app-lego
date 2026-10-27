@@ -7,6 +7,7 @@ Uso:
 import argparse
 import csv
 import gzip
+import html
 import io
 import json
 import os
@@ -16,6 +17,8 @@ import urllib.request
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
+
+from fetch_brickset import plain_text
 
 BASE_URL = "https://cdn.rebrickable.com/media/downloads/"
 FILES = ["themes", "sets", "inventories", "inventory_minifigs", "inventory_sets", "minifigs"]
@@ -72,12 +75,38 @@ def box_rank(img):
     """0 fronte della scatola (Box1, Box_front), 1 scatola col set montato (boxprod), 2 altre foto
     della scatola (Box2, Box5...), 2.5 retro (Box_back), 3 tutto il resto. Brickset non le mette sempre in quest'ordine."""
     name = img[0].rsplit("/", 1)[-1].lower()
-    m = re.search(r"(?:^|[_-])box(\d*|prod)(?=[_.-]|$)", name)
+    m = re.search(r"(?:^|[_-])box(\d*|prod\d*|pod)(?=[_.-]|$)", name)
     if not m:
         return 3
     if m.group(1) == "1" or "front" in name:
         return 0
-    return 1 if m.group(1) == "prod" else 2.5 if "back" in name else 2
+    return 1 if m.group(1).startswith(("prod", "pod")) else 2.5 if "back" in name else 2
+
+
+def same_photo(img):
+    """Brickset a volte ha la stessa foto due volte, in versioni o lingue diverse
+    (10371_Box1_v29 e 10371_Box1_v39, 75402_box5_v39 e 75402_box5_v39_en-gb, x.jpeg.jpg e x.jpg)."""
+    name = img[0].rsplit("/", 1)[-1].lower()
+    name = re.sub(r"\.(jpe?g|png)", "", name)
+    return re.sub(r"_(v\d{2,3}|[a-z]{2}-[a-z]{2})(?=_|$)", "", name)
+
+
+def unique_photos(imgs):
+    seen, out = set(), []
+    for img in imgs:
+        key = same_photo(img)
+        if key not in seen:
+            seen.add(key)
+            out.append(img)
+    return out
+
+
+def clean_desc(desc):
+    """Toglie i "\\u0026" letterali, l'HTML rimasto (<i>, &lt;p&gt;) e i segnaposto ("Description", "tbd-SW-1")."""
+    desc = re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), desc)
+    if re.search(r"<[a-zA-Z/]|&[a-zA-Z#0-9]+;", desc):
+        desc = plain_text(html.unescape(desc).replace("\n", "<br>"))
+    return "" if desc.strip().lower() in ("description", "") or desc.lower().startswith("tbd") else desc
 
 
 def build(out_dir, src=None):
@@ -155,14 +184,16 @@ def build(out_dir, src=None):
     if BRICKSET_TEXTS.exists():
         for year in json.loads(BRICKSET_TEXTS.read_text(encoding="utf-8"))["years"].values():
             for set_num, text in year["sets"].items():
-                if text.get("desc"):  # "\\u0026" letterali rimasti nei testi gia' scaricati
-                    text["desc"] = re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), text["desc"])
+                if text.get("desc"):
+                    text["desc"] = clean_desc(text["desc"])
+                    if not text["desc"]:
+                        del text["desc"]
                 details[set_num].update(text)
     if BRICKSET_PHOTOS.exists():
         for set_num, info in json.loads(BRICKSET_PHOTOS.read_text(encoding="utf-8"))["sets"].items():
             if not info["imgs"]:
                 continue
-            imgs = sorted(info["imgs"], key=box_rank)  # la scatola sempre per prima
+            imgs = unique_photos(sorted(info["imgs"], key=box_rank))  # la scatola sempre per prima, senza doppioni
             details[set_num]["imgs"] = imgs
             if box_rank(imgs[0]) < 3 and set_num in extra:
                 extra[set_num]["box"] = imgs[0]  # foto della scatola, per gli elenchi
