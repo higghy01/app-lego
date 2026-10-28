@@ -83,6 +83,13 @@ def box_rank(img):
     return 1 if m.group(1).startswith(("prod", "pod")) else 2.5 if "back" in name else 2
 
 
+def photo_order(img):
+    """La scatola per prima, poi le altre foto in ordine di nome, con i numeri contati come numeri
+    (Brickset da' alt1, alt10, alt11, alt2: noi alt1, alt2 ... alt10)."""
+    name = re.sub(r"(\.(jpe?g|png))+$", "", img[0].rsplit("/", 1)[-1].lower())
+    return box_rank(img), [int(p) if p.isdigit() else p for p in re.split(r"(\d+)", name)]
+
+
 def same_photo(img):
     """Brickset a volte ha la stessa foto due volte, in versioni o lingue diverse
     (10371_Box1_v29 e 10371_Box1_v39, 75402_box5_v39 e 75402_box5_v39_en-gb, x.jpeg.jpg e x.jpg)."""
@@ -193,7 +200,7 @@ def build(out_dir, src=None):
         for set_num, info in json.loads(BRICKSET_PHOTOS.read_text(encoding="utf-8"))["sets"].items():
             if not info["imgs"]:
                 continue
-            imgs = unique_photos(sorted(info["imgs"], key=box_rank))  # la scatola sempre per prima, senza doppioni
+            imgs = unique_photos(sorted(info["imgs"], key=photo_order))  # la scatola sempre per prima, senza doppioni
             details[set_num]["imgs"] = imgs
             if box_rank(imgs[0]) < 3 and set_num in extra:
                 extra[set_num]["box"] = imgs[0]  # foto della scatola, per gli elenchi
