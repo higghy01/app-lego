@@ -826,6 +826,11 @@ input[type=search] { box-shadow: var(--brick) var(--line); }
 @media (min-width: 600px) { .blocks { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (min-width: 900px) { .blocks { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .blocks > li { min-width: 0; display: flex; }
+/* Velocità: i blocchi lontani dallo schermo non si disegnano finché non ci si arriva scorrendo
+   (con centinaia di set caricati lo scorrimento resta fluido). 215px = altezza tipica di un blocco.
+   Vedi layoutAll() in app.js. */
+.list.blocks > li:not(.empty) { content-visibility: auto; contain-intrinsic-size: auto 215px; }
+#view.layout-all .list.blocks > li { content-visibility: visible; }
 .blocks > li.empty { grid-column: 1 / -1; display: block; }
 .item.block {
   --bc: color-mix(in srgb, var(--muted) 45%, var(--card));

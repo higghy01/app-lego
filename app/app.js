@@ -96,7 +96,7 @@ window.imgFallback = (img) => {
 function imgTag(set, cls) {
   if (!set.img) return `<div class="${cls === "hero" ? "noimg" : "thumb"}">Immagine non disponibile</div>`;
   const src = cls === "hero" ? set.img : thumbUrl(set.img);
-  return `<img class="${cls}" src="${esc(src)}" data-full="${esc(set.img)}" alt="" loading="lazy" onerror="imgFallback(this)">`;
+  return `<img class="${cls}" src="${esc(src)}" data-full="${esc(set.img)}" alt="" loading="lazy" decoding="async" onerror="imgFallback(this)">`;
 }
 
 // ---------- Collezione (salvata sul telefono) ----------
@@ -244,13 +244,14 @@ async function loadCatalog() {
       img: imgUrl(img, raw.imgBase),
       root: chain[0] ?? null,
       base: setNum.replace(/-\d+$/, ""),
-      key: norm(name) + " " + norm(setNum) + " " + chain.map((id) => norm(themes[id].name)).join(" "),
+      // Ordine dei codici: i numeri contano per valore (9 prima di 10), come fa Intl.Collator ma molto più veloce.
+      codeKey: setNum.toLowerCase().replace(/\d+/g, (d) => d.replace(/^0+(?=\d)/, "").padStart(20, "0")),
     };
   });
-  // Ordinamenti calcolati una volta sola, così la ricerca resta veloce.
+  // Ordinamento per codice calcolato una volta sola, così la ricerca resta veloce.
+  // Quello per nome (più lento) e il testo per la ricerca si preparano solo la prima volta che servono.
   const collator = new Intl.Collator("it", { numeric: true, sensitivity: "base" });
-  [...sets].sort((a, b) => collator.compare(a.setNum, b.setNum)).forEach((s, i) => { s.codeRank = i; });
-  [...sets].sort((a, b) => collator.compare(a.name, b.name)).forEach((s, i) => { s.nameRank = i; });
+  [...sets].sort((a, b) => (a.codeKey < b.codeKey ? -1 : a.codeKey > b.codeKey ? 1 : 0)).forEach((s, i) => { s.codeRank = i; });
   const bySetNum = new Map(sets.map((s) => [s.setNum, s]));
   const byTheme = (ids) => [...ids].filter((id) => themes[id]).map((id) => themes[id]).sort((a, b) => collator.compare(a.name, b.name));
   const children = {};
@@ -258,7 +259,19 @@ async function loadCatalog() {
     for (let i = 1; i < s.chain.length; i++) (children[s.chain[i - 1]] ||= new Set()).add(s.chain[i]);
   }
   const rootThemes = byTheme(new Set(sets.map((s) => s.root).filter((id) => id != null)));
-  state.catalog = { generated: raw.generated, sets, bySetNum, themes, rootThemes, children, byTheme, imgBase: raw.imgBase };
+  state.catalog = { generated: raw.generated, sets, bySetNum, themes, rootThemes, children, byTheme, imgBase: raw.imgBase, collator };
+}
+
+// Testo in cui cercare (nome, codice, temi), preparato la prima volta che si cerca.
+function searchKey(s) {
+  const { themes } = state.catalog;
+  return (s.key ??= norm(s.name) + " " + norm(s.setNum) + " " + s.chain.map((id) => norm(themes[id].name)).join(" "));
+}
+
+// Posizione in ordine alfabetico, calcolata la prima volta che si ordina per nome.
+function nameRanks() {
+  const { sets, collator } = state.catalog;
+  if (sets[0]?.nameRank == null) [...sets].sort((a, b) => collator.compare(a.name, b.name)).forEach((s, i) => { s.nameRank = i; });
 }
 
 // Dati Brickset: codici a barre, età, prezzi, valutazioni (caricati solo quando servono).
@@ -267,8 +280,16 @@ async function loadExtra() {
   const res = await fetch("data/extra.json");
   if (!res.ok) throw new Error("dati extra non trovati");
   const raw = await res.json();
+  state.extra = { sets: raw.sets || {}, imgBase: raw.imgBase, detailFiles: raw.detailFiles };
+  return state.extra;
+}
+
+// Codici a barre → set: preparati solo la prima volta che si scansiona.
+function barcodeIndex() {
+  const extra = state.extra;
+  if (extra.barcodes) return extra.barcodes;
   const barcodes = new Map();
-  for (const [setNum, info] of Object.entries(raw.sets || {})) {
+  for (const [setNum, info] of Object.entries(extra.sets)) {
     for (const code of [info.ean, info.upc]) {
       const key = normBarcode(code);
       if (!key) continue;
@@ -276,8 +297,7 @@ async function loadExtra() {
       if (!barcodes.get(key).includes(setNum)) barcodes.get(key).push(setNum);
     }
   }
-  state.extra = { sets: raw.sets || {}, barcodes, imgBase: raw.imgBase, detailFiles: raw.detailFiles };
-  return state.extra;
+  return (extra.barcodes = barcodes);
 }
 
 // Descrizione, tag e foto in più di un set (da Brickset): divisi in tanti file piccoli,
@@ -360,7 +380,7 @@ function filteredSets() {
   const theme = f.sub !== "" ? Number(f.sub) : f.theme !== "" ? Number(f.theme) : null;
   let list = state.catalog.sets.filter((s) => {
     if (isCode && !s.setNum.startsWith(q)) return false;
-    if (words.length && !words.every((w) => s.key.includes(w))) return false;
+    if (words.length && !words.every((w) => searchKey(s).includes(w))) return false;
     if (theme != null && !s.chain.includes(theme)) return false;
     if (f.onlyParts && s.parts == null && !s.figs) return false;
     if (yFrom != null && !(s.year != null && s.year >= yFrom)) return false;
@@ -381,6 +401,7 @@ function filteredSets() {
     name: (a, b) => a.nameRank - b.nameRank,
     parts: (a, b) => (b.parts || 0) - (a.parts || 0) || a.codeRank - b.codeRank,
   };
+  if (f.sort === "name") nameRanks();
   const sorter = sorters[f.sort] || sorters.year;
   list.sort((a, b) => {
     const ca = codeMatch(a), cb = codeMatch(b);
@@ -508,7 +529,7 @@ function renderCatalog() {
     renderCatalog();
   });
   renderResults();
-  window.scrollTo(0, state.catalogScroll);
+  layoutAll(state.catalogScroll);
   // Foto delle scatole ed etichette Nuovo/In arrivo arrivano da Brickset: appena ci sono si ridisegnano i blocchi.
   if (!state.extra) loadExtra().then(() => {
     if (currentRoute.startsWith("#/catalogo")) renderResults(false, true);
@@ -522,6 +543,22 @@ function filterLabel() {
 }
 
 let moreObserver = null;
+
+// I blocchi lontani dallo schermo non vengono disegnati (content-visibility in style.css) e hanno
+// un'altezza stimata. Quando un elenco è appena stato ridisegnato e si torna a metà pagina, per un
+// attimo si misurano tutti davvero: così il punto in cui si era resta preciso e scorrendo in su non salta.
+// y = dove portare la pagina (di solito resta dov'è).
+function layoutAll(y = window.scrollY) {
+  const view = $("#view");
+  if (y > 0) {
+    view.classList.add("layout-all");
+    clearTimeout(layoutAll.t);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      layoutAll.t = setTimeout(() => view.classList.remove("layout-all"), 50);
+    }));
+  }
+  window.scrollTo(0, y);
+}
 
 // Disegna la lista; con append=true aggiunge solo le righe nuove ("Mostra altri").
 // quiet=true: ridisegna senza animazione (gli stessi set, con le foto delle scatole arrivate dopo).
@@ -539,7 +576,7 @@ function renderResults(append = false, quiet = false) {
   const already = append ? results.children.length : 0;
   const rows = list.slice(already, state.shown).map(setItem).join("");
   if (append) results.insertAdjacentHTML("beforeend", rows);
-  else { results.innerHTML = rows; if (quiet) calmView(); else animateView("relist"); }
+  else { results.innerHTML = rows; layoutAll(); if (quiet) calmView(); else animateView("relist"); }
   if (list.length > state.shown) {
     $("#more").innerHTML = `<button class="btn full more">Mostra altri</button>`;
     const btn = $("#more button");
@@ -618,7 +655,7 @@ function boxThumb(s) {
 function listImg(s, cls = "thumb") {
   const box = boxThumb(s);
   if (!box) return imgTag(s, "thumb").replace('class="thumb"', `class="${cls}"`);
-  return `<img class="${cls}" src="${esc(box)}" data-full="${esc(s.img)}" alt="" loading="lazy" onerror="imgFallback(this)">`;
+  return `<img class="${cls}" src="${esc(box)}" data-full="${esc(s.img)}" alt="" loading="lazy" decoding="async" onerror="imgFallback(this)">`;
 }
 
 const isRealSet = (s) => s.parts != null || s.figs;
@@ -739,8 +776,18 @@ function renderTheme(id) {
     drawThemeList(id);
   });
   drawThemeList(id);
-  window.scrollTo(0, v.scroll);
+  layoutAll(v.scroll);
   if (!state.extra) loadExtra().then(() => { if (currentRoute === `#/tema/${id}`) drawThemeList(id, false, true); }).catch(() => {});
+}
+
+// Set di un tema dal più nuovo: ordinati una volta sola (non a ogni "Mostra altri" mentre si scorre).
+let themeSetsCache = null;
+function themeSets(themeId) {
+  const sig = `${themeId}|${state.extra ? "extra" : "base"}|${todayLocal()}`;
+  if (themeSetsCache?.sig !== sig) {
+    themeSetsCache = { sig, list: state.catalog.sets.filter((s) => s.chain.includes(themeId) && isRealSet(s)).sort(byRelease) };
+  }
+  return themeSetsCache.list;
 }
 
 // "quiet": ridisegno perché sono arrivati i dati, non perché lei ha cambiato qualcosa: niente animazione.
@@ -749,7 +796,7 @@ function drawThemeList(id, append = false, quiet = false) {
   const ul = $("#theme-list");
   if (!ul) return;
   const filter = v.sub !== "" ? Number(v.sub) : Number(id);
-  const all = state.catalog.sets.filter((s) => s.chain.includes(filter) && isRealSet(s)).sort(byRelease);
+  const all = themeSets(filter);
   if (!append) drawThemeHead(id);
   // Pulsanti "Nuovi" e "In arrivo": solo se in questo tema ce ne sono.
   const nNew = all.filter((s) => releaseTag(s) === "new").length;
@@ -770,7 +817,7 @@ function drawThemeList(id, append = false, quiet = false) {
   const already = append ? ul.children.length : 0;
   const rows = list.slice(already, v.shown).map(setItem).join("");
   if (append) ul.insertAdjacentHTML("beforeend", rows);
-  else { ul.innerHTML = rows; if (quiet) calmView(); else animateView("relist"); }
+  else { ul.innerHTML = rows; layoutAll(); if (quiet) calmView(); else animateView("relist"); }
   if (list.length > v.shown) {
     $("#more").innerHTML = `<button class="btn full more">Mostra altri</button>`;
     const btn = $("#more button");
@@ -1507,9 +1554,9 @@ async function handleCode(text, typed) {
   // Codice a barre (8 cifre o più) cercato nei dati Brickset.
   if (digits.length >= 8) {
     try {
-      const { barcodes, sets } = await loadExtra();
+      const { sets } = await loadExtra();
       extraMissing = Object.keys(sets).length === 0;
-      matches = (barcodes.get(normBarcode(digits)) || []).map((n) => state.catalog.bySetNum.get(n)).filter(Boolean);
+      matches = (barcodeIndex().get(normBarcode(digits)) || []).map((n) => state.catalog.bySetNum.get(n)).filter(Boolean);
     } catch { offline = true; }
   }
   // Numero del set (scritto a mano o letto da un QR code che lo contiene).
@@ -1579,6 +1626,7 @@ function renderCollection() {
         `<button class="chip ${id === state.collectionChip ? "on" : ""}" data-chip="${id}">${esc(label)} (${collectionList(fn).length})</button>`).join("")}</div>
       ${list.length ? `<ul class="list blocks">${list.map(setItem).join("")}</ul>` :
         `<div class="empty"><b>Ancora niente qui</b>Cerca un set nel <a href="#/catalogo">Catalogo</a>, aprilo e scegli il suo stato (per esempio "Costruito").</div>`}`;
+    layoutAll();
     $(".more-stats").addEventListener("toggle", (ev) => { state.statsOpen = ev.target.open; });
     // La fila dei filtri scorre di lato: resta visibile quello scelto.
     const chipRow = $(".chips.scroll");
@@ -1682,6 +1730,7 @@ function renderWishlist(quiet = false) {
   $("#view").innerHTML = list.length
     ? `<p class="muted small">${list.length === 1 ? "1 set desiderato" : list.length + " set desiderati"}${sum}</p><ul class="list blocks">${list.map(wishItem).join("")}</ul>`
     : `<div class="empty"><b>La lista desideri è vuota</b>Apri un set dal <a href="#/catalogo">Catalogo</a> e tocca "Desiderato".</div>`;
+  layoutAll();
   // Prezzi, foto delle scatole ed etichette Nuovo arrivano da Brickset: appena ci sono si ridisegna.
   if (!state.extra && list.length) loadExtra().then(() => { if (location.hash === "#/desideri") renderWishlist(true); }).catch(() => {});
 }
@@ -1916,7 +1965,15 @@ async function start() {
   window.addEventListener("hashchange", route);
   route();
   // Appena si sa quali set hanno foto, si aggiungono le 📷 all'elenco già mostrato.
-  loadPhotoCounts().then(() => { if ($("#results")) renderResults(); });
+  loadPhotoCounts().then(() => { if ($("#results")) renderResults(false, true); });
+  // Poco dopo l'apertura prepara a pezzetti il testo per la ricerca, così la prima ricerca non si blocca.
+  const sets = state.catalog.sets;
+  let i = 0;
+  const prepare = () => {
+    for (const end = Math.min(i + 1500, sets.length); i < end; i++) searchKey(sets[i]);
+    if (i < sets.length) setTimeout(prepare, 50);
+  };
+  setTimeout(prepare, 2000);
 }
 
 start();
