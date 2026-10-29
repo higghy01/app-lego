@@ -547,8 +547,9 @@ let moreObserver = null;
 // I blocchi lontani dallo schermo non vengono disegnati (content-visibility in style.css) e hanno
 // un'altezza stimata. Quando un elenco è appena stato ridisegnato e si torna a metà pagina, per un
 // attimo si misurano tutti davvero: così il punto in cui si era resta preciso e scorrendo in su non salta.
-// y = dove portare la pagina (di solito resta dov'è).
-function layoutAll(y = window.scrollY) {
+// y = dove portare la pagina: per restare dov'era va letto PRIMA di cambiare l'elenco
+// (dopo, con le altezze stimate, la pagina può essere più corta e il telefono l'avrebbe già spostata).
+function layoutAll(y) {
   const view = $("#view");
   if (y > 0) {
     view.classList.add("layout-all");
@@ -576,7 +577,7 @@ function renderResults(append = false, quiet = false) {
   const already = append ? results.children.length : 0;
   const rows = list.slice(already, state.shown).map(setItem).join("");
   if (append) results.insertAdjacentHTML("beforeend", rows);
-  else { results.innerHTML = rows; layoutAll(); if (quiet) calmView(); else animateView("relist"); }
+  else { const y = window.scrollY; results.innerHTML = rows; layoutAll(y); if (quiet) calmView(); else animateView("relist"); }
   if (list.length > state.shown) {
     $("#more").innerHTML = `<button class="btn full more">Mostra altri</button>`;
     const btn = $("#more button");
@@ -817,7 +818,7 @@ function drawThemeList(id, append = false, quiet = false) {
   const already = append ? ul.children.length : 0;
   const rows = list.slice(already, v.shown).map(setItem).join("");
   if (append) ul.insertAdjacentHTML("beforeend", rows);
-  else { ul.innerHTML = rows; layoutAll(); if (quiet) calmView(); else animateView("relist"); }
+  else { const y = window.scrollY; ul.innerHTML = rows; layoutAll(y); if (quiet) calmView(); else animateView("relist"); }
   if (list.length > v.shown) {
     $("#more").innerHTML = `<button class="btn full more">Mostra altri</button>`;
     const btn = $("#more button");
@@ -1620,13 +1621,14 @@ function renderCollection() {
   const draw = () => {
     const [, , filter] = chips.find((c) => c[0] === state.collectionChip) || chips[0];
     const list = collectionList(filter);
+    const y = window.scrollY;
     $("#view").innerHTML = `${isIosBrowser() ? SAFARI_WARNING : ""}
       ${statsCard()}
       <div class="chips scroll">${chips.map(([id, label, fn]) =>
         `<button class="chip ${id === state.collectionChip ? "on" : ""}" data-chip="${id}">${esc(label)} (${collectionList(fn).length})</button>`).join("")}</div>
       ${list.length ? `<ul class="list blocks">${list.map(setItem).join("")}</ul>` :
         `<div class="empty"><b>Ancora niente qui</b>Cerca un set nel <a href="#/catalogo">Catalogo</a>, aprilo e scegli il suo stato (per esempio "Costruito").</div>`}`;
-    layoutAll();
+    layoutAll(y);
     $(".more-stats").addEventListener("toggle", (ev) => { state.statsOpen = ev.target.open; });
     // La fila dei filtri scorre di lato: resta visibile quello scelto.
     const chipRow = $(".chips.scroll");
@@ -1727,10 +1729,11 @@ function renderWishlist(quiet = false) {
   const sum = !prices.length ? "" : prices.length === list.length ? ` · in tutto circa ${total} € di listino`
     : ` · circa ${total} € di listino (prezzo noto per ${prices.length} su ${list.length})`;
   if (quiet) calmView();
+  const y = window.scrollY;
   $("#view").innerHTML = list.length
     ? `<p class="muted small">${list.length === 1 ? "1 set desiderato" : list.length + " set desiderati"}${sum}</p><ul class="list blocks">${list.map(wishItem).join("")}</ul>`
     : `<div class="empty"><b>La lista desideri è vuota</b>Apri un set dal <a href="#/catalogo">Catalogo</a> e tocca "Desiderato".</div>`;
-  layoutAll();
+  layoutAll(y);
   // Prezzi, foto delle scatole ed etichette Nuovo arrivano da Brickset: appena ci sono si ridisegna.
   if (!state.extra && list.length) loadExtra().then(() => { if (location.hash === "#/desideri") renderWishlist(true); }).catch(() => {});
 }
