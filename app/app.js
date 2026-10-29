@@ -1542,10 +1542,15 @@ function renderCollection() {
     const list = collectionList(filter);
     $("#view").innerHTML = `${isIosBrowser() ? SAFARI_WARNING : ""}
       ${statsCard()}
-      <div class="chips">${chips.map(([id, label, fn]) =>
+      <div class="chips scroll">${chips.map(([id, label, fn]) =>
         `<button class="chip ${id === state.collectionChip ? "on" : ""}" data-chip="${id}">${esc(label)} (${collectionList(fn).length})</button>`).join("")}</div>
       ${list.length ? `<ul class="list blocks">${list.map(setItem).join("")}</ul>` :
         `<div class="empty"><b>Ancora niente qui</b>Cerca un set nel <a href="#/catalogo">Catalogo</a>, aprilo e scegli il suo stato (per esempio "Costruito").</div>`}`;
+    $(".more-stats").addEventListener("toggle", (ev) => { state.statsOpen = ev.target.open; });
+    // La fila dei filtri scorre di lato: resta visibile quello scelto.
+    const chipRow = $(".chips.scroll");
+    chipRow.scrollLeft = state.chipScroll || 0;
+    chipRow.addEventListener("scroll", () => { state.chipScroll = chipRow.scrollLeft; }, { passive: true });
     document.querySelectorAll("[data-chip]").forEach((b) => b.addEventListener("click", () => {
       if (state.collectionChip === b.dataset.chip) return;
       state.collectionChip = b.dataset.chip;
@@ -1559,6 +1564,8 @@ function renderCollection() {
   draw();
   // Le foto si contano in un secondo momento: quando arrivano si aggiornano numeri e 📷.
   loadPhotoCounts().then(() => { if (location.hash === "#/collezione") draw(); });
+  // Foto delle scatole ed etichette Nuovo/In arrivo arrivano da Brickset: appena ci sono si ridisegna (senza animazione).
+  if (!state.extra) loadExtra().then(() => { if (location.hash === "#/collezione") { calmView(); draw(); } }).catch(() => {});
 }
 
 function statsCard() {
@@ -1588,6 +1595,10 @@ function statsCard() {
       ${tile(fmtNum(owned.length), "set posseduti")}
       ${tile(fmtNum(built.length), "set costruiti")}
       ${tile(fmtNum(builtParts), "pezzi costruiti")}
+    </div>
+    <details class="more-stats" ${state.statsOpen ? "open" : ""}>
+    <summary>Altre statistiche</summary>
+    <div class="stats">
       ${tile(fmtNum(wish.length), "set desiderati")}
       ${tile(fmtNum(photos), "foto")}
       ${tile('<span class="na">…</span>', "valore indicativo", "stat-value")}
@@ -1600,6 +1611,7 @@ function statsCard() {
     ${rated.length ? `<p class="small muted">Voto medio calcolato su ${rated.length === 1 ? "1 set votato" : rated.length + " set votati"}.</p>` : ""}
     ${missingParts ? `<p class="small muted">Pezzi non disponibili per ${missingParts} ${missingParts === 1 ? "set costruito" : "set costruiti"}: non sono contati.</p>` : ""}
     <p class="small muted" id="value-note"></p>
+    </details>
   </div>`;
 }
 
@@ -1625,13 +1637,27 @@ async function fillValue() {
     (priced < owned.length ? `Calcolato su ${priced} set su ${owned.length}: per gli altri il prezzo non è disponibile.` : `Calcolato su tutti i ${priced} set posseduti.`));
 }
 
-function renderWishlist() {
+function renderWishlist(quiet = false) {
   setHeader("Lista desideri");
   setTab("desideri");
   const list = collectionList((e) => e.s === "wish");
+  const prices = state.extra ? list.map((s) => state.extra.sets[s.setNum]?.price?.DE).filter(Boolean) : [];
+  const total = fmtNum(Math.round(prices.reduce((a, b) => a + b, 0)));
+  const sum = !prices.length ? "" : prices.length === list.length ? ` · in tutto circa ${total} € di listino`
+    : ` · circa ${total} € di listino (prezzo noto per ${prices.length} su ${list.length})`;
+  if (quiet) calmView();
   $("#view").innerHTML = list.length
-    ? `<p class="muted small">${list.length === 1 ? "1 set desiderato" : list.length + " set desiderati"}</p><ul class="list blocks">${list.map(setItem).join("")}</ul>`
+    ? `<p class="muted small">${list.length === 1 ? "1 set desiderato" : list.length + " set desiderati"}${sum}</p><ul class="list blocks">${list.map(wishItem).join("")}</ul>`
     : `<div class="empty"><b>La lista desideri è vuota</b>Apri un set dal <a href="#/catalogo">Catalogo</a> e tocca "Desiderato".</div>`;
+  // Prezzi, foto delle scatole ed etichette Nuovo arrivano da Brickset: appena ci sono si ridisegna.
+  if (!state.extra && list.length) loadExtra().then(() => { if (location.hash === "#/desideri") renderWishlist(true); }).catch(() => {});
+}
+
+// Nella lista desideri l'etichetta "Desiderato" sarebbe uguale per tutti: al suo posto il prezzo di listino.
+function wishItem(s) {
+  const eur = state.extra?.sets[s.setNum]?.price?.DE;
+  const price = eur ? `<span class="block-st"><span class="price-tag">${esc(eur.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }))} €</span></span>` : "";
+  return setItem(s).replace(/<span class="block-st">.*?<\/span><\/span>/, price);
 }
 
 function renderBackup() {
