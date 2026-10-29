@@ -88,7 +88,7 @@ window.imgFallback = (img) => {
   const box = document.createElement("div");
   // Nelle caselle dei temi resta il riquadro con il mattoncino disegnato, senza scritta.
   const tile = img.classList.contains("tile-img");
-  box.className = tile ? "tile-img" : img.className.includes("hero") ? "noimg" : "thumb";
+  box.className = tile || img.classList.contains("block-img") ? img.className : img.className.includes("hero") ? "noimg" : "thumb";
   if (!tile) box.textContent = "Immagine non disponibile";
   img.replaceWith(box);
 };
@@ -407,14 +407,19 @@ function setTab(name) {
   document.querySelectorAll(".tabs a").forEach((a) => a.classList.toggle("active", a.dataset.tab === name));
 }
 
+// Un set negli elenchi: un blocco con la foto grande, come un mattoncino (i bottoncini sopra hanno il colore dello stato).
 function setItem(s) {
   const e = entry(s.setNum);
-  const meta = [s.setNum, s.year, s.parts != null ? `${fmtNum(s.parts)} pezzi` : null].filter(Boolean).join(" · ");
-  const badge = e.s !== "none" ? `<span class="badge st-${e.s}">${esc(STATUS_LABEL[e.s])}</span>` : "";
-  return `<li><a class="item" href="#/set/${encodeURIComponent(s.setNum)}">
-    ${listImg(s)}
-    <div class="info">${releaseBadge(s)}<div class="name">${esc(s.name)}</div><div class="meta">${esc(meta)}</div>${badge}${e.v ? `<span class="stars-small" aria-label="Voto ${e.v} su 5">${starText(e.v)}</span>` : ""}</div>
-    ${state.photoCounts[s.setNum] ? '<span class="fav" title="Ha foto">📷</span>' : ""}${e.f ? '<span class="fav">❤️</span>' : ""}
+  const meta = [s.setNum, s.year].filter(Boolean).join(" · ");
+  const label = e.s === "owned" ? "Da costruire" : STATUS_LABEL[e.s]; // corto: il blocco è stretto
+  const badge = e.s !== "none" ? `<span class="badge st-${e.s}" title="${esc(STATUS_LABEL[e.s])}">${esc(label)}</span>` : "";
+  const icons = (state.photoCounts[s.setNum] ? '<span title="Ha foto">📷</span>' : "") + (e.f ? '<span title="Preferito">❤️</span>' : "");
+  return `<li><a class="item block" data-st="${e.s}" href="#/set/${encodeURIComponent(s.setNum)}">
+    <span class="block-pic">${listImg(s, "block-img")}${releaseBadge(s, true)}${icons ? `<span class="block-icons">${icons}</span>` : ""}</span>
+    <span class="name">${esc(s.name)}</span>
+    <span class="meta">${esc(meta)}</span>
+    ${s.parts != null ? `<span class="meta">${fmtNum(s.parts)} pezzi</span>` : ""}
+    ${e.v ? `<span class="stars-small" aria-label="Voto ${e.v} su 5">${starText(e.v)}</span>` : ""}${badge ? `<span class="block-st">${badge}</span>` : ""}
   </a></li>`;
 }
 
@@ -480,7 +485,7 @@ function renderCatalog() {
         <option value="parts" ${f.sort === "parts" ? "selected" : ""}>Più pezzi</option>
       </select>
     </div>
-    <ul class="list" id="results"></ul>
+    <ul class="list blocks" id="results"></ul>
     <div id="more"></div>`;
 
   const refresh = () => { state.shown = PAGE; renderResults(); };
@@ -504,6 +509,10 @@ function renderCatalog() {
   });
   renderResults();
   window.scrollTo(0, state.catalogScroll);
+  // Foto delle scatole ed etichette Nuovo/In arrivo arrivano da Brickset: appena ci sono si ridisegnano i blocchi.
+  if (!state.extra) loadExtra().then(() => {
+    if (currentRoute.startsWith("#/catalogo")) renderResults(false, true);
+  }).catch(() => {});
 }
 
 function filterLabel() {
@@ -515,7 +524,8 @@ function filterLabel() {
 let moreObserver = null;
 
 // Disegna la lista; con append=true aggiunge solo le righe nuove ("Mostra altri").
-function renderResults(append = false) {
+// quiet=true: ridisegna senza animazione (gli stessi set, con le foto delle scatole arrivate dopo).
+function renderResults(append = false, quiet = false) {
   const list = filteredSets();
   const results = $("#results");
   if (!results) return;
@@ -529,7 +539,7 @@ function renderResults(append = false) {
   const already = append ? results.children.length : 0;
   const rows = list.slice(already, state.shown).map(setItem).join("");
   if (append) results.insertAdjacentHTML("beforeend", rows);
-  else { results.innerHTML = rows; animateView("relist"); }
+  else { results.innerHTML = rows; if (quiet) calmView(); else animateView("relist"); }
   if (list.length > state.shown) {
     $("#more").innerHTML = `<button class="btn full more">Mostra altri</button>`;
     const btn = $("#more button");
@@ -573,12 +583,14 @@ function releaseTag(s) {
   return s.year != null && s.year > new Date().getFullYear() ? "soon" : null;
 }
 
-function releaseBadge(s) {
+// short: data corta ("1 dic"), per i blocchi stretti degli elenchi.
+function releaseBadge(s, short = false) {
   const tag = releaseTag(s);
   if (tag === "new") return '<span class="rel rel-new">Nuovo</span>';
   if (tag === "soon") {
     const launch = launchOf(s);
-    return `<span class="rel rel-soon">In arrivo${launch ? ` · ${esc(fmtDate(launch))}` : ""}</span>`;
+    const d = launch && short ? new Date(launch).toLocaleDateString("it-IT", { day: "numeric", month: "short" }) : fmtDate(launch);
+    return `<span class="rel rel-soon">In arrivo${d ? ` · ${esc(d)}` : ""}</span>`;
   }
   return "";
 }
@@ -712,7 +724,7 @@ function renderTheme(id) {
   $("#view").innerHTML = `
     ${subs.length ? `<select id="theme-sub" aria-label="Sottotema"><option value="">Tutti i sottotemi</option>${subOpts}</select>` : ""}
     <div class="result-info"><span id="count"></span><span>dal più nuovo</span></div>
-    <ul class="list" id="theme-list"></ul>
+    <ul class="list blocks" id="theme-list"></ul>
     <div id="more"></div>`;
   $("#theme-sub")?.addEventListener("change", (ev) => { v.sub = ev.target.value; v.shown = PAGE; v.scroll = 0; drawThemeList(id); });
   drawThemeList(id);
@@ -1097,9 +1109,9 @@ function renderDetail(setNum) {
 
     ${s.figs ? `<div class="card"><h2>Minifigure</h2><div id="figs" class="muted small"><span class="mini-load">Caricamento…</span></div></div>` : ""}
 
-    ${variants.length ? `<div class="card"><h2>Varianti</h2><ul class="list">${variants.map(setItem).join("")}</ul></div>` : ""}
+    ${variants.length ? `<div class="card"><h2>Varianti</h2><ul class="list blocks">${variants.map(setItem).join("")}</ul></div>` : ""}
 
-    ${related.length ? `<div class="card"><h2>Set correlati</h2><p class="muted small">Stesso tema, usciti negli stessi anni.</p><ul class="list">${related.map(setItem).join("")}</ul></div>` : ""}`;
+    ${related.length ? `<div class="card"><h2>Set correlati</h2><p class="muted small">Stesso tema, usciti negli stessi anni.</p><ul class="list blocks">${related.map(setItem).join("")}</ul></div>` : ""}`;
 
   const flash = () => {
     const el = $("#saved");
@@ -1484,7 +1496,7 @@ async function handleCode(text, typed) {
   const isText = typed && !/\d/.test(text);
   const again = `<div class="center"><button class="btn primary" id="scan-again">Scansiona un altro</button></div>`;
   if (matches.length) {
-    out.innerHTML = `<div class="card"><h2>Ho trovato ${matches.length} set</h2><ul class="list">${matches.map(setItem).join("")}</ul></div>${again}`;
+    out.innerHTML = `<div class="card"><h2>Ho trovato ${matches.length} set</h2><ul class="list blocks">${matches.map(setItem).join("")}</ul></div>${again}`;
   } else {
     out.innerHTML = `<div class="card"><h2>Codice non trovato</h2><p class="small">Ho letto <b>${esc(text)}</b> ma non corrisponde a nessun set.
       ${isText ? `Qui si cercano solo numeri. Per cercare per nome usa la scheda <a href="#/catalogo">Catalogo</a>.`
@@ -1532,7 +1544,7 @@ function renderCollection() {
       ${statsCard()}
       <div class="chips">${chips.map(([id, label, fn]) =>
         `<button class="chip ${id === state.collectionChip ? "on" : ""}" data-chip="${id}">${esc(label)} (${collectionList(fn).length})</button>`).join("")}</div>
-      ${list.length ? `<ul class="list">${list.map(setItem).join("")}</ul>` :
+      ${list.length ? `<ul class="list blocks">${list.map(setItem).join("")}</ul>` :
         `<div class="empty"><b>Ancora niente qui</b>Cerca un set nel <a href="#/catalogo">Catalogo</a>, aprilo e scegli il suo stato (per esempio "Costruito").</div>`}`;
     document.querySelectorAll("[data-chip]").forEach((b) => b.addEventListener("click", () => {
       if (state.collectionChip === b.dataset.chip) return;
@@ -1618,7 +1630,7 @@ function renderWishlist() {
   setTab("desideri");
   const list = collectionList((e) => e.s === "wish");
   $("#view").innerHTML = list.length
-    ? `<p class="muted small">${list.length === 1 ? "1 set desiderato" : list.length + " set desiderati"}</p><ul class="list">${list.map(setItem).join("")}</ul>`
+    ? `<p class="muted small">${list.length === 1 ? "1 set desiderato" : list.length + " set desiderati"}</p><ul class="list blocks">${list.map(setItem).join("")}</ul>`
     : `<div class="empty"><b>La lista desideri è vuota</b>Apri un set dal <a href="#/catalogo">Catalogo</a> e tocca "Desiderato".</div>`;
 }
 
