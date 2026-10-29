@@ -694,13 +694,14 @@ function renderThemes() {
     const img = t.cover ? `<span class="tile-cover">${imgTag(s, "tile-img")}</span>` : s ? listImg(s, "tile-img") : '<div class="tile-img"></div>';
     return `<a class="tile" href="#/tema/${t.theme.id}" style="--tc:${themeColor(t.theme.name)}">${img}<span class="tile-name">${esc(t.theme.name)}</span><span class="tile-count">${fmtNum(t.count)} set</span></a>`;
   };
-  const row = (t) => `<li><a class="item compact" href="#/tema/${t.theme.id}"><div class="info"><div class="name">${esc(t.theme.name)}</div><div class="meta">${fmtNum(t.count)} set · ${t.from === t.to ? t.from ?? "" : `${t.from}–${t.to}`}</div></div></a></li>`;
+  // I temi vecchi sono mattoncini più piccoli, senza foto: sono tanti e così la pagina resta corta.
+  const mini = (t) => `<a class="tile mini" href="#/tema/${t.theme.id}" style="--tc:${themeColor(t.theme.name)}"><span class="tile-name">${esc(t.theme.name)}</span><span class="tile-count">${fmtNum(t.count)} set</span><span class="tile-count">${yearsText(t)}</span></a>`;
   $("#view").innerHTML = `
     <p class="muted small">Tocca un tema per vedere tutti i suoi set, dal più nuovo. I nomi dei temi sono quelli originali in inglese.</p>
     <div class="tiles">${active.map(tile).join("")}</div>
     <details class="old-themes" ${state.oldThemesOpen ? "open" : ""}>
       <summary>Altri temi: vecchi, libri e gadget (${old.length})</summary>
-      <ul class="list">${old.map(row).join("")}</ul>
+      <div class="tiles mini-tiles">${old.map(mini).join("")}</div>
     </details>`;
   $(".old-themes").addEventListener("toggle", (ev) => { state.oldThemesOpen = ev.target.open; });
   window.scrollTo(0, state.themesScroll || 0);
@@ -713,20 +714,30 @@ function renderThemes() {
   }).catch(() => {});
 }
 
+const yearsText = (t) => (t.from === t.to ? String(t.from ?? "") : `${t.from}–${t.to}`);
+
 function renderTheme(id) {
   const t = state.catalog.themes[id];
   if (!t) { location.hash = "#/temi"; return; }
   setHeader(t.name, "#/temi");
   setTab("temi");
-  const v = state.themeView?.id === id ? state.themeView : (state.themeView = { id, sub: "", shown: PAGE, scroll: 0 });
+  const v = state.themeView?.id === id ? state.themeView : (state.themeView = { id, sub: "", when: "", shown: PAGE, scroll: 0 });
   const subs = state.catalog.byTheme(state.catalog.children[id] || []);
   const subOpts = subs.map((x) => `<option value="${x.id}" ${String(x.id) === v.sub ? "selected" : ""}>${esc(x.name)}</option>`).join("");
   $("#view").innerHTML = `
+    <div id="theme-head"></div>
     ${subs.length ? `<select id="theme-sub" aria-label="Sottotema"><option value="">Tutti i sottotemi</option>${subOpts}</select>` : ""}
+    <div class="chips when-chips" id="theme-when"></div>
     <div class="result-info"><span id="count"></span><span>dal più nuovo</span></div>
     <ul class="list blocks" id="theme-list"></ul>
     <div id="more"></div>`;
-  $("#theme-sub")?.addEventListener("change", (ev) => { v.sub = ev.target.value; v.shown = PAGE; v.scroll = 0; drawThemeList(id); });
+  $("#theme-sub")?.addEventListener("change", (ev) => { v.sub = ev.target.value; v.when = ""; v.shown = PAGE; v.scroll = 0; drawThemeList(id); });
+  $("#theme-when").addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-when]");
+    if (!b || b.dataset.when === v.when) return;
+    v.when = b.dataset.when; v.shown = PAGE; v.scroll = 0;
+    drawThemeList(id);
+  });
   drawThemeList(id);
   window.scrollTo(0, v.scroll);
   if (!state.extra) loadExtra().then(() => { if (currentRoute === `#/tema/${id}`) drawThemeList(id, false, true); }).catch(() => {});
@@ -738,7 +749,17 @@ function drawThemeList(id, append = false, quiet = false) {
   const ul = $("#theme-list");
   if (!ul) return;
   const filter = v.sub !== "" ? Number(v.sub) : Number(id);
-  const list = state.catalog.sets.filter((s) => s.chain.includes(filter) && isRealSet(s)).sort(byRelease);
+  const all = state.catalog.sets.filter((s) => s.chain.includes(filter) && isRealSet(s)).sort(byRelease);
+  if (!append) drawThemeHead(id);
+  // Pulsanti "Nuovi" e "In arrivo": solo se in questo tema ce ne sono.
+  const nNew = all.filter((s) => releaseTag(s) === "new").length;
+  const nSoon = all.filter((s) => releaseTag(s) === "soon").length;
+  if (v.when === "new" && !nNew || v.when === "soon" && !nSoon) v.when = "";
+  const chip = (when, label, n) => `<button type="button" class="chip ${v.when === when ? "on" : ""}" data-when="${when}">${label}${n ? ` (${fmtNum(n)})` : ""}</button>`;
+  $("#theme-when").innerHTML = nNew || nSoon
+    ? chip("", "Tutti") + (nNew ? chip("new", "Nuovi", nNew) : "") + (nSoon ? chip("soon", "In arrivo", nSoon) : "")
+    : "";
+  const list = v.when ? all.filter((s) => releaseTag(s) === v.when) : all;
   $("#count").textContent = list.length === 1 ? "1 set" : `${fmtNum(list.length)} set`;
   if (moreObserver) { moreObserver.disconnect(); moreObserver = null; }
   if (!list.length) {
@@ -762,6 +783,18 @@ function drawThemeList(id, append = false, quiet = false) {
   } else {
     $("#more").innerHTML = "";
   }
+}
+
+// In cima alla pagina di un tema: la sua copertina (come la casella nella pagina Temi) con anni e numero di set.
+function drawThemeHead(id) {
+  const head = $("#theme-head");
+  const t = themeIndex().active.concat(themeIndex().old).find((x) => x.theme.id === Number(id));
+  if (!head || !t) { if (head) head.innerHTML = ""; return; }
+  const s = t.cover || t.newest;
+  const img = t.cover ? `<span class="tile-cover">${imgTag(s, "tile-img")}</span>` : s ? listImg(s, "tile-img") : '<div class="tile-img"></div>';
+  head.innerHTML = `<div class="tile theme-head" style="--tc:${themeColor(t.theme.name)}">${img}
+    <span class="theme-head-info"><span class="tile-name">${t.count === 1 ? "1 set" : `${fmtNum(t.count)} set`}</span>
+    ${t.from != null ? `<span class="tile-count">${t.from === t.to ? `uscito nel ${t.from}` : `dal ${t.from} al ${t.to}`}</span>` : ""}</span></div>`;
 }
 
 // ---------- Galleria foto della scheda ----------
