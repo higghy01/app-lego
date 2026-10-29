@@ -12,6 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="icon" href="icons/icon-192.png">
+  <link rel="preload" href="vendor/fredoka.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="style.css">
   <script>try { if (localStorage.getItem("lego-tema") === "scuro") document.documentElement.dataset.theme = "dark"; } catch {}</script>
 </head>
@@ -23,7 +24,7 @@
     Per installare l'app: tocca <b>Condividi</b> <span aria-hidden="true">⬆︎</span> (sugli iPhone più nuovi è dentro il menu <b>•••</b>) e poi <b>Aggiungi alla schermata Home</b>.
     <button type="button" id="install-close" aria-label="Chiudi">✕</button>
   </div>
-  <main id="view"><p class="center muted">Caricamento…</p></main>
+  <main id="view"><p class="center muted loading">Caricamento…</p></main>
   <nav class="tabs">
     <a href="#/temi" data-tab="temi"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></span>Temi</a>
     <a href="#/catalogo" data-tab="catalogo"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>Catalogo</a>

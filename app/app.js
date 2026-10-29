@@ -871,6 +871,25 @@ function legoPrice(x) {
   return html;
 }
 
+// Piccola festa quando un set è finito: cadono mattoncini colorati (niente se il telefono chiede meno animazioni).
+function celebrate() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const colors = ["#da291c", "#006cb7", "#00852b", "#ffd500", "#e8680c", "#7b3fc4"];
+  const box = document.createElement("div");
+  box.className = "confetti";
+  box.setAttribute("aria-hidden", "true");
+  for (let i = 0; i < 36; i++) {
+    const b = document.createElement("i");
+    b.style.left = Math.random() * 100 + "%";
+    b.style.background = colors[i % colors.length];
+    b.style.animationDelay = Math.random() * 0.5 + "s";
+    b.style.setProperty("--r", (Math.random() * 720 - 360).toFixed(0) + "deg");
+    box.append(b);
+  }
+  document.body.append(box);
+  setTimeout(() => box.remove(), 2400);
+}
+
 function renderDetail(setNum) {
   const found = state.catalog.bySetNum.get(setNum);
   // Un set salvato in collezione ma tolto dal catalogo resta gestibile (stato, note…).
@@ -1007,7 +1026,9 @@ function renderDetail(setNum) {
     const st = btn.dataset.status;
     const changes = { s: st };
     if (["none", "wish", "owned"].includes(st)) changes.d = changes.v = changes.t = changes.w = undefined; // non ancora costruito: niente data, voto, tempo, persone
+    const was = entry(setNum).s;
     const ok = updateEntry(setNum, changes);
+    if (ok && st === "built" && was !== "built") celebrate();
     document.querySelectorAll(".status-btn").forEach((b) => { b.className = "status-btn" + (b.dataset.status === st ? " on st-" + st : ""); });
     const cur = entry(setNum);
     $("#date-field").hidden = !(st === "built" || st === "apart" || cur.d);
