@@ -671,3 +671,14 @@ input[type=search] { box-shadow: var(--brick) var(--line); }
 @media (max-width: 359px) {
   .tabs a { font-size: 9.5px; letter-spacing: -.01em; }
 }
+
+/* Telefoni piccoli: etichetta dello stato su una riga, testo della ricerca intero */
+.badge { max-width: 100%; }
+@media (max-width: 359px) {
+  .badge { font-size: 11px; padding-right: 7px; gap: 4px; white-space: nowrap; }
+  #q::placeholder { font-size: 13px; }
+}
+/* Tante foto: al posto dei puntini schiacciati, "3 / 45" */
+.dots { flex-wrap: wrap; }
+.dots span { flex: none; }
+.dots span.count { width: auto; height: auto; border-radius: 0; background: none; font: 600 13px var(--font-fun); color: #6b6459; }
