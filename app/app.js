@@ -529,7 +529,7 @@ function renderResults(append = false) {
   const already = append ? results.children.length : 0;
   const rows = list.slice(already, state.shown).map(setItem).join("");
   if (append) results.insertAdjacentHTML("beforeend", rows);
-  else results.innerHTML = rows;
+  else { results.innerHTML = rows; animateView("relist"); }
   if (list.length > state.shown) {
     $("#more").innerHTML = `<button class="btn full more">Mostra altri</button>`;
     const btn = $("#more button");
@@ -735,7 +735,7 @@ function drawThemeList(id, append = false) {
   const already = append ? ul.children.length : 0;
   const rows = list.slice(already, v.shown).map(setItem).join("");
   if (append) ul.insertAdjacentHTML("beforeend", rows);
-  else ul.innerHTML = rows;
+  else { ul.innerHTML = rows; animateView("relist"); }
   if (list.length > v.shown) {
     $("#more").innerHTML = `<button class="btn full more">Mostra altri</button>`;
     const btn = $("#more button");
@@ -898,6 +898,76 @@ function celebrate() {
   setTimeout(() => box.remove(), 2400);
 }
 
+// ---------- Animazioni ----------
+// Tutte leggere (solo movimento e trasparenza) e spente se il telefono chiede meno animazioni.
+
+const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// Fa ripartire un'animazione sullo stesso elemento (es. "✓ Salvato" a ogni salvataggio).
+function replay(el, cls) {
+  if (!el) return;
+  el.classList.remove(cls);
+  void el.offsetWidth;
+  el.classList.add(cls);
+}
+
+// Pagina nuova: i pezzi arrivano uno dopo l'altro come mattoncini che si incastrano ("enter").
+// Elenco ridisegnato (ricerca, filtri): solo le righe ("relist"). Poi la classe si toglie,
+// così i ridisegni successivi (foto contate, dati arrivati) non fanno ripartire tutto.
+function animateView(cls = "enter") {
+  const view = $("#view");
+  view.classList.add(cls);
+  clearTimeout(animateView[cls]);
+  animateView[cls] = setTimeout(() => view.classList.remove(cls), 900);
+}
+
+// Scoppio di mattoncini, cuori o stelle attorno a un pulsante.
+function burst(el, kind = "bricks") {
+  if (!el || calm()) return;
+  const r = el.getBoundingClientRect();
+  const colors = ["#da291c", "#006cb7", "#00852b", "#ffd500", "#e8680c", "#7b3fc4"];
+  const box = document.createElement("div");
+  box.className = "burst " + kind;
+  box.setAttribute("aria-hidden", "true");
+  box.style.left = r.left + r.width / 2 + "px";
+  box.style.top = r.top + r.height / 2 + "px";
+  const n = 10;
+  for (let i = 0; i < n; i++) {
+    const b = document.createElement("i");
+    const a = (i / n) * Math.PI * 2 + Math.random() * 0.5;
+    const d = 34 + Math.random() * 26;
+    b.style.setProperty("--x", (Math.cos(a) * d).toFixed(0) + "px");
+    b.style.setProperty("--y", (Math.sin(a) * d).toFixed(0) + "px");
+    b.style.setProperty("--r", (Math.random() * 300 - 150).toFixed(0) + "deg");
+    if (kind === "bricks") b.style.background = colors[i % colors.length];
+    else b.textContent = kind === "hearts" ? "❤" : "★";
+    box.append(b);
+  }
+  document.body.append(box);
+  setTimeout(() => box.remove(), 800);
+}
+
+// I numeri delle statistiche salgono da 0 fino al valore vero. "t0" è l'inizio: se la pagina
+// si ridisegna mentre i numeri salgono (es. quando arrivano le foto), si continua da dove si era.
+const COUNT_MS = 700;
+function countUp(root, t0) {
+  if (calm()) return;
+  root.querySelectorAll(".stat b").forEach((b) => {
+    const text = b.textContent;
+    if (b.children.length || !/^\d{1,3}(\.\d{3})*( €)?$/.test(text)) return;
+    const end = Number(text.replace(/\D/g, ""));
+    if (end < 2) return;
+    const suffix = text.endsWith(" €") ? " €" : "";
+    const step = () => {
+      if (!b.isConnected) return; // pagina ridisegnata o cambiata
+      const k = Math.min(Math.max((performance.now() - t0) / COUNT_MS, 0), 1);
+      b.textContent = fmtNum(Math.round(end * (1 - (1 - k) ** 3))) + suffix;
+      if (k < 1) requestAnimationFrame(step);
+    };
+    step();
+  });
+}
+
 function renderDetail(setNum) {
   const found = state.catalog.bySetNum.get(setNum);
   // Un set salvato in collezione ma tolto dal catalogo resta gestibile (stato, note…).
@@ -984,7 +1054,7 @@ function renderDetail(setNum) {
 
     ${found ? `<div class="card" id="desc-card">
       <h2>Descrizione</h2>
-      <div id="x-desc" class="muted small">Caricamento…</div>
+      <div id="x-desc" class="muted small"><span class="mini-load">Caricamento…</span></div>
     </div>` : ""}
 
     <div class="card">
@@ -1017,7 +1087,7 @@ function renderDetail(setNum) {
       </dl>
     </div>
 
-    ${s.figs ? `<div class="card"><h2>Minifigure</h2><div id="figs" class="muted small">Caricamento…</div></div>` : ""}
+    ${s.figs ? `<div class="card"><h2>Minifigure</h2><div id="figs" class="muted small"><span class="mini-load">Caricamento…</span></div></div>` : ""}
 
     ${variants.length ? `<div class="card"><h2>Varianti</h2><ul class="list">${variants.map(setItem).join("")}</ul></div>` : ""}
 
@@ -1027,6 +1097,7 @@ function renderDetail(setNum) {
     const el = $("#saved");
     if (!el) return;
     el.textContent = "✓ Salvato";
+    replay(el, "pop-in");
     clearTimeout(flash.t);
     flash.t = setTimeout(() => { el.textContent = ""; }, 1500);
   };
@@ -1038,6 +1109,11 @@ function renderDetail(setNum) {
     const ok = updateEntry(setNum, changes);
     if (ok && st === "built" && was !== "built") celebrate();
     document.querySelectorAll(".status-btn").forEach((b) => { b.className = "status-btn" + (b.dataset.status === st ? " on st-" + st : ""); });
+    if (ok && st !== was) {
+      replay(btn, "snap");
+      if (st === "wish") burst(btn, "stars");
+      else if (st !== "none" && st !== "built") burst(btn);
+    }
     const cur = entry(setNum);
     $("#date-field").hidden = !(st === "built" || st === "apart" || cur.d);
     $("#built-date").value = cur.d || "";
@@ -1049,6 +1125,7 @@ function renderDetail(setNum) {
     if (ok) flash();
   }));
   const showStars = (v) => {
+    $(".stars").classList.remove("rated");
     $(".stars").innerHTML = starButtons(v);
     $("#rating-hint").textContent = v ? "Tocca di nuovo la stessa stella per togliere il voto." : "Quanto ti è piaciuto costruirlo?";
   };
@@ -1059,6 +1136,8 @@ function renderDetail(setNum) {
     const v = entry(setNum).v === n ? undefined : n;
     if (!updateEntry(setNum, { v })) return;
     showStars(v);
+    if (v) $(".stars").classList.add("rated");
+    if (v === 5) burst($('.star[data-star="5"]'), "stars");
     flash();
   });
   // Tempo di costruzione: salvato in minuti (campo "t").
@@ -1081,13 +1160,16 @@ function renderDetail(setNum) {
     pendingSave = null;
     saveTime(typedTime() + Number(btn.dataset.addMin));
     showTime(entry(setNum).t);
+    replay($(".time-row"), "bump");
   }));
   // Con chi: nomi già usati in altri set si scelgono con un tocco, oppure se ne scrive uno nuovo.
   const seenBuddies = new Set(e.w || []);
   const setBuddies = (w) => {
+    const before = entry(setNum).w || [];
     if (!updateEntry(setNum, { w: w.length ? w : undefined })) return;
     w.forEach((name) => seenBuddies.add(name));
     $("#buddies").innerHTML = buddyChips(w, [...seenBuddies]);
+    $("#buddies").querySelectorAll(".chip.on").forEach((c) => { if (!before.includes(c.dataset.buddy)) c.classList.add("snap"); });
     flash();
   };
   $("#buddies").addEventListener("click", (ev) => {
@@ -1128,6 +1210,8 @@ function renderDetail(setNum) {
     const f = !entry(setNum).f;
     if (!updateEntry(setNum, { f: f || undefined })) return;
     ev.target.textContent = f ? "❤️ Nei preferiti" : "🤍 Aggiungi ai preferiti";
+    replay(ev.target, "beat");
+    if (f) burst(ev.target, "hearts");
     flash();
   });
 
@@ -1432,6 +1516,7 @@ function renderCollection() {
     ["rated", "Con voto ★", (e) => e.v],
     ["photo", "Con foto 📷", (e, num) => state.photoCounts[num]],
   ];
+  const t0 = performance.now();
   const draw = () => {
     const [, , filter] = chips.find((c) => c[0] === state.collectionChip) || chips[0];
     const list = collectionList(filter);
@@ -1441,7 +1526,13 @@ function renderCollection() {
         `<button class="chip ${id === state.collectionChip ? "on" : ""}" data-chip="${id}">${esc(label)} (${collectionList(fn).length})</button>`).join("")}</div>
       ${list.length ? `<ul class="list">${list.map(setItem).join("")}</ul>` :
         `<div class="empty"><b>Ancora niente qui</b>Cerca un set nel <a href="#/catalogo">Catalogo</a>, aprilo e scegli il suo stato (per esempio "Costruito").</div>`}`;
-    document.querySelectorAll("[data-chip]").forEach((b) => b.addEventListener("click", () => { state.collectionChip = b.dataset.chip; draw(); }));
+    document.querySelectorAll("[data-chip]").forEach((b) => b.addEventListener("click", () => {
+      if (state.collectionChip === b.dataset.chip) return;
+      state.collectionChip = b.dataset.chip;
+      draw();
+      animateView("relist");
+    }));
+    if (performance.now() - t0 < COUNT_MS) countUp($("#view"), t0);
     fillValue();
   };
   draw();
@@ -1707,6 +1798,7 @@ function route() {
   if (currentRoute.startsWith("#/tema/") && state.themeView) state.themeView.scroll = window.scrollY;
   state.cameFromApp = currentRoute !== "";
   currentRoute = hash;
+  animateView();
   const [, page, arg] = hash.split("/");
   if (page === "set" && arg) renderDetail(decodeURIComponent(arg));
   else if (page === "collezione") renderCollection();
