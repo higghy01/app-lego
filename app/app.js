@@ -696,6 +696,7 @@ function renderThemes() {
   if (!state.extra) loadExtra().then(() => {
     if (currentRoute !== "#/temi") return;
     state.themesScroll = window.scrollY;
+    calmView();
     renderThemes();
   }).catch(() => {});
 }
@@ -716,10 +717,11 @@ function renderTheme(id) {
   $("#theme-sub")?.addEventListener("change", (ev) => { v.sub = ev.target.value; v.shown = PAGE; v.scroll = 0; drawThemeList(id); });
   drawThemeList(id);
   window.scrollTo(0, v.scroll);
-  if (!state.extra) loadExtra().then(() => { if (currentRoute === `#/tema/${id}`) drawThemeList(id); }).catch(() => {});
+  if (!state.extra) loadExtra().then(() => { if (currentRoute === `#/tema/${id}`) drawThemeList(id, false, true); }).catch(() => {});
 }
 
-function drawThemeList(id, append = false) {
+// "quiet": ridisegno perché sono arrivati i dati, non perché lei ha cambiato qualcosa: niente animazione.
+function drawThemeList(id, append = false, quiet = false) {
   const v = state.themeView;
   const ul = $("#theme-list");
   if (!ul) return;
@@ -735,7 +737,7 @@ function drawThemeList(id, append = false) {
   const already = append ? ul.children.length : 0;
   const rows = list.slice(already, v.shown).map(setItem).join("");
   if (append) ul.insertAdjacentHTML("beforeend", rows);
-  else { ul.innerHTML = rows; animateView("relist"); }
+  else { ul.innerHTML = rows; if (quiet) calmView(); else animateView("relist"); }
   if (list.length > v.shown) {
     $("#more").innerHTML = `<button class="btn full more">Mostra altri</button>`;
     const btn = $("#more button");
@@ -919,6 +921,12 @@ function animateView(cls = "enter") {
   view.classList.add(cls);
   clearTimeout(animateView[cls]);
   animateView[cls] = setTimeout(() => view.classList.remove(cls), 900);
+}
+
+// Ferma le animazioni della pagina: per i ridisegni arrivati da soli (dati scaricati dopo).
+function calmView() {
+  const view = $("#view");
+  for (const cls of ["enter", "relist"]) { clearTimeout(animateView[cls]); view.classList.remove(cls); }
 }
 
 // Scoppio di mattoncini, cuori o stelle attorno a un pulsante.
@@ -1530,6 +1538,7 @@ function renderCollection() {
       if (state.collectionChip === b.dataset.chip) return;
       state.collectionChip = b.dataset.chip;
       draw();
+      $("[data-chip].on")?.classList.add("snap");
       animateView("relist");
     }));
     if (performance.now() - t0 < COUNT_MS) countUp($("#view"), t0);
