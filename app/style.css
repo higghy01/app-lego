@@ -311,10 +311,6 @@ li.empty { list-style: none; }
 .btn:focus-visible, .chip:focus-visible, .status-btn:focus-visible, .item:focus-visible, .tabs a:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--red) 45%, transparent); outline-offset: 2px;
 }
-#view > * { animation: appear .22s ease-out both; }
-@keyframes appear { from { opacity: 0; transform: translateY(6px); } }
-.status-btn.on { animation: pop .22s ease-out; }
-@keyframes pop { 50% { transform: scale(1.04); } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
@@ -682,3 +678,142 @@ input[type=search] { box-shadow: var(--brick) var(--line); }
 .dots { flex-wrap: wrap; }
 .dots span { flex: none; }
 .dots span.count { width: auto; height: auto; border-radius: 0; background: none; font: 600 13px var(--font-fun); color: #6b6459; }
+
+/* ---------- Animazioni a tema LEGO ----------
+   Solo movimento e trasparenza (fluide anche su iPhone). Con "Riduci movimento" attivo
+   le spegne tutte la regola prefers-reduced-motion più sopra. */
+
+/* Pagina nuova: ogni pezzo scende e si incastra con un piccolo rimbalzo, uno dopo l'altro */
+@keyframes snap-in {
+  0% { opacity: 0; transform: translateY(-14px); }
+  60% { opacity: 1; transform: translateY(2px); }
+  80% { transform: translateY(-1px); }
+  100% { opacity: 1; transform: none; }
+}
+#view.enter > *, #view.enter .tiles > .tile:nth-child(-n+12), #view.enter .stats > .stat,
+#view.enter .list > li:nth-child(-n+10), #view.relist .list > li:nth-child(-n+10) {
+  animation: snap-in .38s cubic-bezier(.3, .7, .4, 1) both;
+}
+#view.enter > :nth-child(2) { animation-delay: .04s; }
+#view.enter > :nth-child(3) { animation-delay: .08s; }
+#view.enter > :nth-child(4) { animation-delay: .12s; }
+#view.enter > :nth-child(n+5) { animation-delay: .16s; }
+.tiles > .tile:nth-child(2), .list > li:nth-child(2), .stats > .stat:nth-child(2) { animation-delay: .04s !important; }
+.tiles > .tile:nth-child(3), .list > li:nth-child(3), .stats > .stat:nth-child(3) { animation-delay: .08s !important; }
+.tiles > .tile:nth-child(4), .list > li:nth-child(4), .stats > .stat:nth-child(4) { animation-delay: .12s !important; }
+.tiles > .tile:nth-child(5), .list > li:nth-child(5), .stats > .stat:nth-child(5) { animation-delay: .16s !important; }
+.tiles > .tile:nth-child(6), .list > li:nth-child(6), .stats > .stat:nth-child(6) { animation-delay: .2s !important; }
+.tiles > .tile:nth-child(7), .list > li:nth-child(7), .stats > .stat:nth-child(7) { animation-delay: .24s !important; }
+.tiles > .tile:nth-child(8), .list > li:nth-child(8), .stats > .stat:nth-child(8) { animation-delay: .28s !important; }
+.tiles > .tile:nth-child(9), .list > li:nth-child(9), .stats > .stat:nth-child(9) { animation-delay: .32s !important; }
+.tiles > .tile:nth-child(10), .list > li:nth-child(10) { animation-delay: .36s !important; }
+.tiles > .tile:nth-child(11) { animation-delay: .4s !important; }
+.tiles > .tile:nth-child(12) { animation-delay: .44s !important; }
+
+/* Il mattoncino giallo del titolo fa un saltello a ogni pagina */
+@keyframes brick-hop {
+  0%, 100% { transform: none; }
+  35% { transform: translateY(-6px) rotate(-8deg); }
+  60% { transform: translateY(1px) scale(1.08, .9); }
+}
+.top h1::before { animation: brick-hop .5s ease-out .05s; }
+.top .back { animation: slide-back .3s ease-out both; }
+@keyframes slide-back { from { opacity: 0; transform: translateX(-10px); } }
+
+/* Pulsanti: si schiacciano come un mattoncino premuto e tornano su con un rimbalzino */
+.item:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--line), var(--shadow); }
+.tile { transition: transform .15s cubic-bezier(.3, 1.6, .5, 1); }
+.tile:active { transform: translateY(3px) scale(.98); }
+.btn, .chip, .status-btn { transition-timing-function: cubic-bezier(.3, 1.5, .5, 1); }
+
+/* Stato scelto: il pulsante si incastra al suo posto (giù, schiacciato, su) */
+@keyframes snap {
+  0% { transform: translateY(-6px) scale(1.04); }
+  45% { transform: translateY(2px) scale(1.06, .9); }
+  70% { transform: translateY(-2px) scale(.98, 1.03); }
+  100% { transform: none; }
+}
+.status-btn.snap, .chip.snap, [data-chip].on { animation: snap .42s ease-out; }
+
+/* Scoppio di mattoncini, stelle o cuori intorno al pulsante (vedi burst in app.js) */
+.burst { position: fixed; z-index: 60; width: 0; height: 0; pointer-events: none; }
+.burst i {
+  position: absolute; left: -6px; top: -5px; width: 12px; height: 9px; font-style: normal;
+  animation: burst .65s cubic-bezier(.2, .8, .4, 1) forwards;
+}
+.burst.bricks i { -webkit-mask: var(--brick-icon) no-repeat center / contain; mask: var(--brick-icon) no-repeat center / contain; }
+.burst.stars i, .burst.hearts i { width: auto; height: auto; left: -7px; top: -10px; font-size: 15px; line-height: 1; }
+.burst.stars i { color: var(--yellow); text-shadow: 0 1px 0 rgba(0, 0, 0, .25); }
+.burst.hearts i { color: #e0245e; }
+@keyframes burst {
+  0% { opacity: 1; transform: translate(0, 0) scale(.4); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--x), var(--y)) rotate(var(--r)) scale(1); }
+}
+
+/* Stelle del voto: si accendono una dopo l'altra */
+@keyframes star-pop {
+  0% { transform: scale(.5); }
+  55% { transform: scale(1.3) rotate(-10deg); }
+  100% { transform: none; }
+}
+.stars.rated .star.on { animation: star-pop .38s ease-out both; }
+.stars.rated .star.on:nth-child(2) { animation-delay: .06s; }
+.stars.rated .star.on:nth-child(3) { animation-delay: .12s; }
+.stars.rated .star.on:nth-child(4) { animation-delay: .18s; }
+.stars.rated .star.on:nth-child(5) { animation-delay: .24s; }
+
+/* Preferito: il cuore batte */
+@keyframes beat { 0%, 100% { transform: none; } 30% { transform: scale(1.1); } 55% { transform: scale(.96); } 75% { transform: scale(1.04); } }
+.fav-btn.beat { animation: beat .5s ease-out; }
+
+/* "✓ Salvato" salta fuori; il tempo aggiunto fa un piccolo sobbalzo */
+@keyframes pop-in { 0% { opacity: 0; transform: scale(.6) translateY(4px); } 60% { opacity: 1; transform: scale(1.12); } 100% { transform: none; } }
+.saved.pop-in { animation: pop-in .35s ease-out; }
+@keyframes bump { 40% { transform: scale(1.05); } }
+.time-row.bump { animation: bump .3s ease-out; }
+
+/* Campi e filtri che compaiono si aprono scendendo */
+@keyframes unfold { from { opacity: 0; transform: translateY(-8px); } }
+#date-field:not([hidden]), #rating-field:not([hidden]), #build-fields:not([hidden]), #filters:not([hidden]) {
+  animation: unfold .28s ease-out;
+}
+
+/* Risultato della scansione e foto ingrandita */
+#scan-result > * { animation: snap-in .4s cubic-bezier(.3, .7, .4, 1) both; }
+#scan-result > :nth-child(2) { animation-delay: .08s; }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes zoom-in { from { opacity: 0; transform: scale(.85); } }
+.viewer { animation: fade-in .2s ease-out; }
+.viewer img { animation: zoom-in .28s cubic-bezier(.3, 1.3, .5, 1); }
+.install-hint:not([hidden]) { animation: unfold .35s ease-out .3s both; }
+
+/* Scansione: una riga rossa passa su e giù nel riquadro, come un lettore di codici */
+.scan-frame::after {
+  content: ""; position: absolute; inset: 0 6%;
+  background: linear-gradient(#ff3b30 0 2px, rgba(255, 59, 48, .35) 2px 5px, transparent 7px);
+  animation: scan-line 1.6s ease-in-out infinite alternate;
+}
+@keyframes scan-line { from { transform: translateY(4%); } to { transform: translateY(90%); } }
+
+/* Pagina vuota: la pila di mattoncini si costruisce e poi ondeggia piano */
+@keyframes stack {
+  0% { opacity: 0; transform: translateY(-30px); }
+  55% { opacity: 1; transform: translateY(3px) scale(1.04, .94); }
+  75% { transform: translateY(-2px); }
+  100% { transform: none; }
+}
+.empty::before { animation: stack .6s cubic-bezier(.3, .7, .4, 1) .15s both; }
+
+/* Caricamento dentro le schede: un mattoncino che salta accanto alla scritta */
+.mini-load { display: inline-flex; align-items: center; gap: 8px; }
+.mini-load::before {
+  content: ""; width: 16px; height: 11px; background: var(--lego-orange);
+  -webkit-mask: var(--brick-icon) no-repeat center / contain; mask: var(--brick-icon) no-repeat center / contain;
+  animation: hop .8s ease-in-out infinite;
+}
+.loading::before, .loading::after { will-change: transform; }
+
+/* Menu in basso: i bottoncini della scheda attiva arrivano per ultimi */
+.tabs a.active span::before { animation: studs-on .3s ease-out .12s both; }
+@keyframes studs-on { from { opacity: 0; transform: translate(-50%, 5px); } }
