@@ -826,6 +826,17 @@ input[type=search] { box-shadow: var(--brick) var(--line); }
 @media (min-width: 600px) { .blocks { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (min-width: 900px) { .blocks { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .blocks > li { min-width: 0; display: flex; }
+/* Velocità: i blocchi lontani dallo schermo non si disegnano finché non ci si arriva scorrendo
+   (con centinaia di set caricati lo scorrimento resta fluido). 257px = altezza tipica di un blocco col suo margine.
+   Vedi layoutAll() in app.js.
+   Il contenimento taglierebbe tutto ciò che esce dal riquadro (bottoncini sopra, ombra sotto): per questo
+   il li ha un margine trasparente attorno al blocco, che non prende i tocchi. */
+.list.blocks > li:not(.empty) {
+  content-visibility: auto; contain-intrinsic-size: auto 257px;
+  padding: 16px 14px 26px; margin: -16px -14px -26px; pointer-events: none; /* ai lati meno di main (16px): niente scorrimento di lato */
+}
+.list.blocks > li:not(.empty) > * { pointer-events: auto; }
+#view.layout-all .list.blocks > li { content-visibility: visible; }
 .blocks > li.empty { grid-column: 1 / -1; display: block; }
 .item.block {
   --bc: color-mix(in srgb, var(--muted) 45%, var(--card));
