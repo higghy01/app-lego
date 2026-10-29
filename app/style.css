@@ -894,3 +894,32 @@ div.block-img {
 .theme-head .tile-count { font-size: 13.5px; }
 .when-chips { margin: 12px 0 4px; }
 .when-chips:empty { display: none; }
+
+/* ---------- Collezione e Desideri ---------- */
+/* Statistiche: 3 numeri principali sempre, le altre a richiesta (così i set si vedono subito) */
+.more-stats { margin-top: 12px; }
+.more-stats > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 40px; font: 600 14.5px var(--font-fun); color: var(--muted);
+}
+.more-stats > summary::-webkit-details-marker { display: none; }
+.more-stats > summary::after {
+  content: ""; width: 8px; height: 8px; margin-top: -4px;
+  border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .2s;
+}
+.more-stats[open] > summary::after { transform: rotate(-135deg); margin-top: 4px; }
+.more-stats[open] > summary { margin-bottom: 10px; }
+
+/* Filtri della collezione: una sola fila che scorre di lato */
+.chips.scroll {
+  flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  margin: 0 -16px 14px; padding: 2px 16px 6px; scroll-padding: 0 16px;
+}
+.chips.scroll::-webkit-scrollbar { display: none; }
+
+/* Lista desideri: in fondo al blocco il prezzo di listino, come un cartellino */
+.price-tag {
+  display: inline-flex; align-items: center; font: 600 13.5px var(--font-fun); color: #fff;
+  background: var(--st-wish); border-radius: 6px; padding: 2px 8px;
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--st-wish) 65%, #000);
+}
