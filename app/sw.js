@@ -1,5 +1,5 @@
 // Fa funzionare l'app anche senza internet.
-const VERSION = "v26";
+const VERSION = "v27";
 const SHELL = "shell-" + VERSION;
 const DATA = "data";
 const IMAGES = "images";

@@ -75,12 +75,13 @@ def box_rank(img):
     """0 fronte della scatola (Box1, Box_front), 1 scatola col set montato (boxprod), 2 altre foto
     della scatola (Box2, Box5...), 2.5 retro (Box_back), 3 tutto il resto. Brickset non le mette sempre in quest'ordine."""
     name = img[0].rsplit("/", 1)[-1].lower()
-    m = re.search(r"(?:^|[_-])box(\d*|prod\d*|pod)(?=[_.-]|$)", name)
-    if not m:
+    m = re.search(r"(?:^|[_ -]|\d)(?:box(\d*|prod\d*|pod|front|back)|packaging)(?=[_. (-]|v\d|$)", name)
+    # "Lifestyle_packaging" e' una foto d'ambiente, non la scatola
+    if not m or "lifestyle" in name:
         return 3
-    if m.group(1) == "1" or "front" in name:
+    if (m.group(1) or "") == "1" or "front" in name:
         return 0
-    return 1 if m.group(1).startswith(("prod", "pod")) else 2.5 if "back" in name else 2
+    return 1 if (m.group(1) or "").startswith(("prod", "pod")) else 2.5 if "back" in name else 2
 
 
 def photo_order(img):

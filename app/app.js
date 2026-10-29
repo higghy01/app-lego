@@ -827,7 +827,10 @@ async function fillGallery(s) {
   const slides = [];
   const extra = details?.imgs || [];
   // L'elenco arriva già ordinato con la scatola per prima (Box1, boxprod, Box5...).
-  const isBox = (u) => /(?:^|[_-])box(\d*|prod\d*|pod)(?=[_.-]|$)/i.test(u.split("/").pop());
+  const isBox = (u) => {
+    const name = u.split("/").pop();
+    return !/lifestyle/i.test(name) && /(?:^|[_ -]|\d)(?:box(\d*|prod\d*|pod|front|back)|packaging)(?=[_. (-]|v\d|$)/i.test(name);
+  };
   if (extra[0] && isBox(extra[0].img)) slides.push(extra.shift());
   if (s.img) slides.push({ img: s.img });
   slides.push(...extra);
