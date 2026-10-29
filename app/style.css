@@ -878,3 +878,25 @@ div.block-img {
 .card .blocks { padding-top: 10px; }
 .card .item.block { box-shadow: var(--brick) var(--line); background: var(--card); border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
 :root[data-theme="dark"] .card .item.block { background: var(--card-2); border-color: var(--line); }
+
+/* ---------- Collezione e Desideri ---------- */
+/* Statistiche: 3 numeri principali sempre, le altre a richiesta (così i set si vedono subito) */
+.more-stats { margin-top: 12px; }
+.more-stats > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 40px; font: 600 14.5px var(--font-fun); color: var(--muted);
+}
+.more-stats > summary::-webkit-details-marker { display: none; }
+.more-stats > summary::after {
+  content: ""; width: 8px; height: 8px; margin-top: -4px;
+  border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .2s;
+}
+.more-stats[open] > summary::after { transform: rotate(-135deg); margin-top: 4px; }
+.more-stats[open] > summary { margin-bottom: 10px; }
+
+/* Filtri della collezione: una sola fila che scorre di lato */
+.chips.scroll {
+  flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  margin: 0 -16px 14px; padding: 2px 16px 6px; scroll-padding: 0 16px;
+}
+.chips.scroll::-webkit-scrollbar { display: none; }

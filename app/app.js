@@ -1542,10 +1542,15 @@ function renderCollection() {
     const list = collectionList(filter);
     $("#view").innerHTML = `${isIosBrowser() ? SAFARI_WARNING : ""}
       ${statsCard()}
-      <div class="chips">${chips.map(([id, label, fn]) =>
+      <div class="chips scroll">${chips.map(([id, label, fn]) =>
         `<button class="chip ${id === state.collectionChip ? "on" : ""}" data-chip="${id}">${esc(label)} (${collectionList(fn).length})</button>`).join("")}</div>
       ${list.length ? `<ul class="list blocks">${list.map(setItem).join("")}</ul>` :
         `<div class="empty"><b>Ancora niente qui</b>Cerca un set nel <a href="#/catalogo">Catalogo</a>, aprilo e scegli il suo stato (per esempio "Costruito").</div>`}`;
+    $(".more-stats").addEventListener("toggle", (ev) => { state.statsOpen = ev.target.open; });
+    // La fila dei filtri scorre di lato: resta visibile quello scelto.
+    const chipRow = $(".chips.scroll");
+    chipRow.scrollLeft = state.chipScroll || 0;
+    chipRow.addEventListener("scroll", () => { state.chipScroll = chipRow.scrollLeft; }, { passive: true });
     document.querySelectorAll("[data-chip]").forEach((b) => b.addEventListener("click", () => {
       if (state.collectionChip === b.dataset.chip) return;
       state.collectionChip = b.dataset.chip;
@@ -1588,6 +1593,10 @@ function statsCard() {
       ${tile(fmtNum(owned.length), "set posseduti")}
       ${tile(fmtNum(built.length), "set costruiti")}
       ${tile(fmtNum(builtParts), "pezzi costruiti")}
+    </div>
+    <details class="more-stats" ${state.statsOpen ? "open" : ""}>
+    <summary>Altre statistiche</summary>
+    <div class="stats">
       ${tile(fmtNum(wish.length), "set desiderati")}
       ${tile(fmtNum(photos), "foto")}
       ${tile('<span class="na">…</span>', "valore indicativo", "stat-value")}
@@ -1600,6 +1609,7 @@ function statsCard() {
     ${rated.length ? `<p class="small muted">Voto medio calcolato su ${rated.length === 1 ? "1 set votato" : rated.length + " set votati"}.</p>` : ""}
     ${missingParts ? `<p class="small muted">Pezzi non disponibili per ${missingParts} ${missingParts === 1 ? "set costruito" : "set costruiti"}: non sono contati.</p>` : ""}
     <p class="small muted" id="value-note"></p>
+    </details>
   </div>`;
 }
 
@@ -1630,8 +1640,21 @@ function renderWishlist() {
   setTab("desideri");
   const list = collectionList((e) => e.s === "wish");
   $("#view").innerHTML = list.length
-    ? `<p class="muted small">${list.length === 1 ? "1 set desiderato" : list.length + " set desiderati"}</p><ul class="list blocks">${list.map(setItem).join("")}</ul>`
+    ? `<p class="muted small">${list.length === 1 ? "1 set desiderato" : list.length + " set desiderati"}<span id="wish-total"></span></p><ul class="list blocks wishlist">${list.map(setItem).join("")}</ul>`
     : `<div class="empty"><b>La lista desideri è vuota</b>Apri un set dal <a href="#/catalogo">Catalogo</a> e tocca "Desiderato".</div>`;
+  if (list.length) fillWishTotal(list);
+}
+
+// Quanto costerebbe tutta la lista: somma dei prezzi di listino in euro (LEGO Germania, da Brickset).
+async function fillWishTotal(list) {
+  let sets;
+  try { ({ sets } = await loadExtra()); } catch { return; }
+  const prices = list.map((s) => sets[s.setNum]?.price?.DE).filter(Boolean);
+  const box = $("#wish-total");
+  if (!box || !prices.length) return;
+  const total = fmtNum(Math.round(prices.reduce((a, b) => a + b, 0)));
+  box.textContent = prices.length === list.length ? ` · in tutto circa ${total} € di listino`
+    : ` · circa ${total} € di listino (prezzo noto per ${prices.length} su ${list.length})`;
 }
 
 function renderBackup() {
