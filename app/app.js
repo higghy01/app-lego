@@ -768,7 +768,14 @@ function galleryHtml(slides) {
     ? `<div class="slide figs-slide"><div class="figs-grid">${sl.figs.map(([src, name]) => `<img src="${esc(src)}" alt="${esc(name)}" loading="lazy" onerror="figError(this)">`).join("")}</div><div class="slide-label">I personaggi del set</div></div>`
     : `<button type="button" class="slide" data-full="${esc(sl.img)}" aria-label="Foto ${i + 1}, apri grande"><img src="${esc(sl.img)}" alt="" ${i ? 'loading="lazy"' : ""} onerror="slideError(this)"></button>`;
   return `<div class="gallery"><div class="slides">${slides.map(one).join("")}</div>
-    ${slides.length > 1 ? `<div class="dots">${slides.map((_, i) => `<span class="${i ? "" : "on"}"></span>`).join("")}</div>` : ""}</div>`;
+    ${slides.length > 1 ? `<div class="dots">${dotsHtml(slides.length, 0)}</div>` : ""}</div>`;
+}
+
+// Fino a 12 foto i puntini; con di più (es. 45) i puntini non ci stanno e si scrive "1 / 45".
+function dotsHtml(n, i) {
+  if (n < 2) return "";
+  if (n > 12) return `<span class="count">${i + 1} / ${n}</span>`;
+  return Array.from({ length: n }, (_, j) => `<span class="${i === j ? "on" : ""}"></span>`).join("");
 }
 
 // Una foto che non si carica (es. senza internet) sparisce; se non resta niente, il riquadro grigio.
@@ -794,10 +801,11 @@ function setupGallery(gallery) {
   if (!n) { gallery.outerHTML = `<div class="noimg">Immagine non disponibile</div>`; return; }
   const dots = gallery.querySelector(".dots");
   if (dots) {
-    dots.innerHTML = n > 1 ? Array.from({ length: n }, (_, i) => `<span class="${i ? "" : "on"}"></span>`).join("") : "";
+    dots.innerHTML = dotsHtml(n, 0);
     slides.onscroll = () => {
       const i = Math.round(slides.scrollLeft / slides.clientWidth);
-      [...dots.children].forEach((d, j) => d.classList.toggle("on", i === j));
+      if (n > 12) dots.firstChild.textContent = `${i + 1} / ${n}`;
+      else [...dots.children].forEach((d, j) => d.classList.toggle("on", i === j));
     };
   }
   slides.onclick = (ev) => {
