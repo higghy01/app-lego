@@ -900,3 +900,10 @@ div.block-img {
   margin: 0 -16px 14px; padding: 2px 16px 6px; scroll-padding: 0 16px;
 }
 .chips.scroll::-webkit-scrollbar { display: none; }
+
+/* Lista desideri: in fondo al blocco il prezzo di listino, come un cartellino */
+.price-tag {
+  display: inline-flex; align-items: center; font: 600 13.5px var(--font-fun); color: #fff;
+  background: var(--st-wish); border-radius: 6px; padding: 2px 8px;
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--st-wish) 65%, #000);
+}

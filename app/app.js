@@ -1564,6 +1564,8 @@ function renderCollection() {
   draw();
   // Le foto si contano in un secondo momento: quando arrivano si aggiornano numeri e 📷.
   loadPhotoCounts().then(() => { if (location.hash === "#/collezione") draw(); });
+  // Foto delle scatole ed etichette Nuovo/In arrivo arrivano da Brickset: appena ci sono si ridisegna (senza animazione).
+  if (!state.extra) loadExtra().then(() => { if (location.hash === "#/collezione") { calmView(); draw(); } }).catch(() => {});
 }
 
 function statsCard() {
@@ -1635,26 +1637,27 @@ async function fillValue() {
     (priced < owned.length ? `Calcolato su ${priced} set su ${owned.length}: per gli altri il prezzo non è disponibile.` : `Calcolato su tutti i ${priced} set posseduti.`));
 }
 
-function renderWishlist() {
+function renderWishlist(quiet = false) {
   setHeader("Lista desideri");
   setTab("desideri");
   const list = collectionList((e) => e.s === "wish");
+  const prices = state.extra ? list.map((s) => state.extra.sets[s.setNum]?.price?.DE).filter(Boolean) : [];
+  const total = fmtNum(Math.round(prices.reduce((a, b) => a + b, 0)));
+  const sum = !prices.length ? "" : prices.length === list.length ? ` · in tutto circa ${total} € di listino`
+    : ` · circa ${total} € di listino (prezzo noto per ${prices.length} su ${list.length})`;
+  if (quiet) calmView();
   $("#view").innerHTML = list.length
-    ? `<p class="muted small">${list.length === 1 ? "1 set desiderato" : list.length + " set desiderati"}<span id="wish-total"></span></p><ul class="list blocks wishlist">${list.map(setItem).join("")}</ul>`
+    ? `<p class="muted small">${list.length === 1 ? "1 set desiderato" : list.length + " set desiderati"}${sum}</p><ul class="list blocks">${list.map(wishItem).join("")}</ul>`
     : `<div class="empty"><b>La lista desideri è vuota</b>Apri un set dal <a href="#/catalogo">Catalogo</a> e tocca "Desiderato".</div>`;
-  if (list.length) fillWishTotal(list);
+  // Prezzi, foto delle scatole ed etichette Nuovo arrivano da Brickset: appena ci sono si ridisegna.
+  if (!state.extra && list.length) loadExtra().then(() => { if (location.hash === "#/desideri") renderWishlist(true); }).catch(() => {});
 }
 
-// Quanto costerebbe tutta la lista: somma dei prezzi di listino in euro (LEGO Germania, da Brickset).
-async function fillWishTotal(list) {
-  let sets;
-  try { ({ sets } = await loadExtra()); } catch { return; }
-  const prices = list.map((s) => sets[s.setNum]?.price?.DE).filter(Boolean);
-  const box = $("#wish-total");
-  if (!box || !prices.length) return;
-  const total = fmtNum(Math.round(prices.reduce((a, b) => a + b, 0)));
-  box.textContent = prices.length === list.length ? ` · in tutto circa ${total} € di listino`
-    : ` · circa ${total} € di listino (prezzo noto per ${prices.length} su ${list.length})`;
+// Nella lista desideri l'etichetta "Desiderato" sarebbe uguale per tutti: al suo posto il prezzo di listino.
+function wishItem(s) {
+  const eur = state.extra?.sets[s.setNum]?.price?.DE;
+  const price = eur ? `<span class="block-st"><span class="price-tag">${esc(eur.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }))} €</span></span>` : "";
+  return setItem(s).replace(/<span class="block-st">.*?<\/span><\/span>/, price);
 }
 
 function renderBackup() {
