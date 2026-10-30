@@ -47,6 +47,16 @@ jobs:
           mkdir -p _site
           cp -r app/. _site/
           python scripts/build_catalog.py _site/data
+      # Prova automatica: apre l'app appena costruita come su un iPhone (Temi, Catalogo, ricerca, scheda,
+      # stato salvato, Collezione, Backup). Se qualcosa non va, la pubblicazione si ferma e resta online la versione di prima.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Prova l'app
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.63.0
+          npx playwright install --with-deps chromium
+          node tests/prova.js _site
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

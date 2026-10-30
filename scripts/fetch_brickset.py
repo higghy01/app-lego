@@ -82,6 +82,9 @@ def compact(s):
         out["bt"] = True
     if s.get("additionalImageCount"):
         out["nimg"] = s["additionalImageCount"]
+    # Numero di pezzi: serve quando Rebrickable non ce l'ha ancora (set appena annunciati, senza inventario).
+    if s.get("pieces"):
+        out["pcs"] = int(s["pieces"])
     return out
 
 

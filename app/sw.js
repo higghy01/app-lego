@@ -1,5 +1,5 @@
 // Fa funzionare l'app anche senza internet.
-const VERSION = "v35";
+const VERSION = "v36";
 const SHELL = "shell-" + VERSION;
 const DATA = "data";
 const IMAGES = "images";
@@ -73,6 +73,8 @@ async function cachedImage(req, name, max) {
   const cached = await cache.match(req);
   if (cached) return cached;
   const res = await fetch(req);
+  // Una risposta sbagliata (sito momentaneamente giù) non si salva: alla prossima apertura si riprova.
+  if (!res.ok) return res;
   cache.put(req, res.clone()).then(async () => {
     const keys = await cache.keys();
     for (let i = 0; i < keys.length - max; i++) await cache.delete(keys[i]);
