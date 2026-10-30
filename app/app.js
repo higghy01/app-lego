@@ -1953,7 +1953,11 @@ let currentRoute = "";
 let pendingSave = null;
 const flushPending = () => { if (pendingSave) pendingSave(); };
 window.addEventListener("pagehide", flushPending);
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") { flushPending(); stopScan(); releaseCam(); } });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") { flushPending(); stopScan(); releaseCam(); }
+  // Tornando nell'app mentre si è in Scansiona (e non si guarda un risultato) la fotocamera riparte da sola.
+  else if (location.hash === "#/scansiona" && $("#scan-box") && !$("#scan-box").hidden) startScan();
+});
 
 function route() {
   flushPending();
