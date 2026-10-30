@@ -934,3 +934,7 @@ div.block-img {
   background: var(--st-wish); border-radius: 6px; padding: 2px 8px;
   box-shadow: 0 2px 0 color-mix(in srgb, var(--st-wish) 65%, #000);
 }
+
+/* Promemoria del backup in Collezione: i due pulsanti sotto il testo, il primo in evidenza. */
+.backup-reminder .shop-row { margin: 10px 0 0; }
+.backup-reminder .btn.primary { color: #fff; }

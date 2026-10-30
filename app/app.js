@@ -16,6 +16,8 @@ const PAGE = 60;
 const STORE_KEY = "lego-collezione-v1";
 const BACKUP_KEY = "lego-ultimo-backup";
 const PREV_KEY = "lego-collezione-prima-import";
+const BACKUP_SNOOZE_KEY = "lego-backup-rimanda";
+const BACKUP_DAYS = 30; // dopo tanti giorni senza backup, con modifiche nuove, in Collezione compare un promemoria
 const NA = '<span class="na">non disponibile</span>';
 
 // ---------- Stato ----------
@@ -236,11 +238,12 @@ async function loadCatalog() {
     for (let t = themes[id]; t && !chain.includes(t.id); t = t.parent != null ? themes[t.parent] : null) chain.unshift(t.id);
     return chain;
   };
-  const sets = raw.sets.map(([setNum, name, year, themeId, parts, img, figs]) => {
+  const sets = raw.sets.map(([setNum, name, year, themeId, parts, img, figs, partsFrom]) => {
     const chain = chainOf(themeId);
     return {
       setNum, name, year, themeId, figs, chain,
       parts: parts || null, // 0 pezzi = dato mancante (libri, gadget…)
+      partsFrom: parts && partsFrom ? partsFrom : null, // "Brickset" quando Rebrickable non ha ancora il numero di pezzi (set appena annunciati)
       img: imgUrl(img, raw.imgBase),
       root: chain[0] ?? null,
       base: setNum.replace(/-\d+$/, ""),
@@ -1088,9 +1091,11 @@ function renderDetail(setNum) {
         .slice(0, 8)
     : [];
   const val = (v) => (v == null || v === "" ? NA : esc(v));
-  const showDate = e.s === "built" || e.s === "apart" || e.d;
-  const showRating = e.s === "built" || e.s === "apart" || e.v;
-  const showBuild = ["building", "built", "apart"].includes(e.s) || e.t || e.w;
+  // Data, voto, tempo e persone si vedono solo negli stati in cui hanno senso; se si cambia stato per sbaglio
+  // restano salvati e ricompaiono tornando indietro. Si cancellano solo con "Non posseduto", dopo conferma.
+  const showDate = e.s === "built" || e.s === "apart";
+  const showRating = e.s === "built" || e.s === "apart";
+  const showBuild = ["building", "built", "apart"].includes(e.s);
 
   $("#view").innerHTML = `
     <div id="gallery">${galleryHtml(firstSlides(s))}</div>
@@ -1174,7 +1179,7 @@ function renderDetail(setNum) {
         <dt>Tema</dt><dd>${val(theme)}</dd>
         <dt>Sottotema</dt><dd>${sub ? esc(sub) : NA}</dd>
         <dt>Anno</dt><dd>${val(s.year)}</dd>
-        <dt>Pezzi</dt><dd>${val(fmtNum(s.parts))}</dd>
+        <dt>Pezzi</dt><dd>${val(fmtNum(s.parts))}${s.partsFrom ? ` <span class="muted small">(dato ${esc(s.partsFrom)})</span>` : ""}</dd>
         <dt>Minifigure</dt><dd>${val(s.figs)}</dd>
         <dt>Codice a barre</dt><dd id="x-barcode">${NA}</dd>
         <dt>Fascia d'età</dt><dd id="x-age">${NA}</dd>
@@ -1205,8 +1210,15 @@ function renderDetail(setNum) {
   document.querySelectorAll(".status-btn").forEach((btn) => btn.addEventListener("click", () => {
     const st = btn.dataset.status;
     const changes = { s: st };
-    if (["none", "wish", "owned"].includes(st)) changes.d = changes.v = changes.t = changes.w = undefined; // non ancora costruito: niente data, voto, tempo, persone
     const was = entry(setNum).s;
+    if (st === was) return;
+    if (st === "none") {
+      const old = entry(setNum);
+      if (old.d || old.v || old.t || old.w) {
+        if (!confirm("Togliere questo set dalla collezione? Si cancellano anche data, voto, tempo e persone (le note, il preferito e le foto restano).")) return;
+        changes.d = changes.v = changes.t = changes.w = undefined;
+      }
+    }
     const ok = updateEntry(setNum, changes);
     if (ok && st === "built" && was !== "built") celebrate();
     document.querySelectorAll(".status-btn").forEach((b) => { b.className = "status-btn" + (b.dataset.status === st ? " on st-" + st : ""); });
@@ -1216,11 +1228,11 @@ function renderDetail(setNum) {
       else if (st !== "none" && st !== "built") burst(btn);
     }
     const cur = entry(setNum);
-    $("#date-field").hidden = !(st === "built" || st === "apart" || cur.d);
+    $("#date-field").hidden = !(st === "built" || st === "apart");
     $("#built-date").value = cur.d || "";
     showStars(cur.v);
-    $("#rating-field").hidden = !(st === "built" || st === "apart" || cur.v);
-    $("#build-fields").hidden = !(["building", "built", "apart"].includes(st) || cur.t || cur.w);
+    $("#rating-field").hidden = !(st === "built" || st === "apart");
+    $("#build-fields").hidden = !["building", "built", "apart"].includes(st);
     showTime(cur.t);
     $("#buddies").innerHTML = buddyChips(cur.w, [...seenBuddies]);
     if (ok) flash();
@@ -1623,12 +1635,17 @@ function renderCollection() {
     const list = collectionList(filter);
     const y = window.scrollY;
     $("#view").innerHTML = `${isIosBrowser() ? SAFARI_WARNING : ""}
+      ${backupReminder()}
       ${statsCard()}
       <div class="chips scroll">${chips.map(([id, label, fn]) =>
         `<button class="chip ${id === state.collectionChip ? "on" : ""}" data-chip="${id}">${esc(label)} (${collectionList(fn).length})</button>`).join("")}</div>
       ${list.length ? `<ul class="list blocks">${list.map(setItem).join("")}</ul>` :
         `<div class="empty"><b>Ancora niente qui</b>Cerca un set nel <a href="#/catalogo">Catalogo</a>, aprilo e scegli il suo stato (per esempio "Costruito").</div>`}`;
     layoutAll(y);
+    $("#backup-later")?.addEventListener("click", () => {
+      try { localStorage.setItem(BACKUP_SNOOZE_KEY, new Date().toISOString()); } catch {}
+      $("#backup-reminder").remove();
+    });
     $(".more-stats").addEventListener("toggle", (ev) => { state.statsOpen = ev.target.open; });
     // La fila dei filtri scorre di lato: resta visibile quello scelto.
     const chipRow = $(".chips.scroll");
@@ -1649,6 +1666,23 @@ function renderCollection() {
   loadPhotoCounts().then(() => { if (location.hash === "#/collezione") draw(); });
   // Foto delle scatole ed etichette Nuovo/In arrivo arrivano da Brickset: appena ci sono si ridisegna (senza animazione).
   if (!state.extra) loadExtra().then(() => { if (location.hash === "#/collezione") { calmView(); draw(); } }).catch(() => {});
+}
+
+// Promemoria del backup: solo se ci sono set salvati, modifiche più recenti dell'ultimo backup
+// e l'ultimo backup manca o ha più di 30 giorni. "Più tardi" lo nasconde per una settimana.
+function backupReminder() {
+  const entries = Object.values(state.collection);
+  if (!entries.length) return "";
+  let last = null, snooze = null;
+  try { last = localStorage.getItem(BACKUP_KEY); snooze = localStorage.getItem(BACKUP_SNOOZE_KEY); } catch {}
+  const now = Date.now();
+  if (snooze && now - new Date(snooze) < 7 * 86400000) return "";
+  if (last && now - new Date(last) < BACKUP_DAYS * 86400000) return "";
+  const changed = entries.some((e) => !last || (e.u || "") > last);
+  if (!changed) return "";
+  const when = last ? `L'ultimo backup è del ${esc(fmtDate(last))} e da allora hai segnato altri set.` : "Non hai ancora fatto nessun backup della collezione.";
+  return `<div class="warn backup-reminder" id="backup-reminder">${when} I set che segni sono salvati solo su questo telefono: salvane una copia.
+    <div class="shop-row"><a class="btn primary" href="#/backup">Vai al Backup</a><button type="button" class="btn" id="backup-later">Più tardi</button></div></div>`;
 }
 
 function statsCard() {
@@ -1919,11 +1953,14 @@ let currentRoute = "";
 let pendingSave = null;
 const flushPending = () => { if (pendingSave) pendingSave(); };
 window.addEventListener("pagehide", flushPending);
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushPending(); });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") { flushPending(); stopScan(); releaseCam(); } });
 
 function route() {
   flushPending();
   stopScan();
+  // Fuori da Scansiona la fotocamera si spegne del tutto (sull'iPhone sparisce il pallino verde);
+  // resta in pausa solo dentro Scansiona, mentre si guarda un risultato, così le scansioni di fila non richiedono il permesso.
+  if ((location.hash || "#/temi") !== "#/scansiona") releaseCam();
   const hash = location.hash || "#/temi";
   if (currentRoute.startsWith("#/catalogo")) state.catalogScroll = window.scrollY;
   if (currentRoute === "#/temi" || currentRoute === "") state.themesScroll = window.scrollY;

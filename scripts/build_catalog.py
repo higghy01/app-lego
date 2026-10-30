@@ -166,27 +166,36 @@ def build(out_dir, src=None):
     figs = {m["fig_num"]: [m["name"], to_int(m["num_parts"]), short_img(m["img_url"])]
             for m in data["minifigs"] if m["fig_num"] in used_figs}
 
+    # Dati Brickset (codici a barre, eta', prezzi, date di uscita), se gia' scaricati.
+    extra = {}
+    if BRICKSET_FILE.exists():
+        for year in json.loads(BRICKSET_FILE.read_text(encoding="utf-8"))["years"].values():
+            extra.update(year["sets"])
+
     sets = []
+    n_pcs = 0
     for s in data["sets"]:
         n_figs = sum(q for _, q in set_figs.get(s["set_num"], []))
-        sets.append([s["set_num"], s["name"], to_int(s["year"]), to_int(s["theme_id"]),
-                     to_int(s["num_parts"]), short_img(s["img_url"]),
-                     n_figs if s["set_num"] in main_inv else None])
+        row = [s["set_num"], s["name"], to_int(s["year"]), to_int(s["theme_id"]),
+               to_int(s["num_parts"]), short_img(s["img_url"]),
+               n_figs if s["set_num"] in main_inv else None]
+        # Rebrickable da' 0 pezzi ai set appena annunciati (inventario non ancora caricato): l'app li
+        # nasconderebbe come gadget. Se Brickset conosce il numero di pezzi lo usiamo, segnando da dove viene.
+        if not row[4] and extra.get(s["set_num"], {}).get("pcs"):
+            row[4] = extra[s["set_num"]]["pcs"]
+            row.append("Brickset")
+            n_pcs += 1
+        sets.append(row)
     sets.sort(key=lambda r: (-(r[2] or 0), r[0]))
 
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     catalog = {"generated": generated, "source": "Rebrickable", "imgBase": IMG_PREFIX,
-               "fields": ["set_num", "name", "year", "theme_id", "num_parts", "img", "num_minifigs"],
+               "fields": ["set_num", "name", "year", "theme_id", "num_parts", "img", "num_minifigs", "parts_from"],
                "themes": themes, "sets": sets}
     minifigs = {"generated": generated, "imgBase": IMG_PREFIX,
                 "figs": figs, "sets": set_figs}
-    # Dati Brickset (codici a barre, eta', prezzi, date di uscita), se gia' scaricati.
-    extra = {}
-    if BRICKSET_FILE.exists():
-        for year in json.loads(BRICKSET_FILE.read_text(encoding="utf-8"))["years"].values():
-            extra.update(year["sets"])
     # Descrizioni, tag e foto in piu': in file separati, letti solo aprendo la scheda del set.
     details = defaultdict(dict)
     if BRICKSET_TEXTS.exists():
@@ -221,7 +230,7 @@ def build(out_dir, src=None):
     n_photos = sum(1 for d in details.values() if d.get("imgs"))
     n_desc = sum(1 for d in details.values() if d.get("desc"))
     summary = (f"{len(sets)} set, {len(themes)} temi, {len(figs)} minifigure, {len(extra)} set con dati Brickset, "
-               f"{n_desc} con descrizione, {n_photos} con foto in piu'")
+               f"{n_desc} con descrizione, {n_photos} con foto in piu', {n_pcs} con pezzi da Brickset")
     print(f"{summary} -> {out}")
     if os.environ.get("GITHUB_ACTIONS"):
         sample = {s[0]: s[1:] for s in sets if s[0] in ("10294-1", "75192-1")}
