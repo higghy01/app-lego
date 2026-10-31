@@ -132,13 +132,14 @@ def box_rect(a, ratio=None, min_solid=0.9):
 VERSION = 2  # 1/11: ritaglio con la misura del retro, alt1 ritagliate, scatole scure alte; le foto "no" di prima si riguardano
 
 
-def is_front(why):
+def is_front(why, real_set=False):
     """why = [logo trovato, bordi bianchi, quanto la sagoma riempie il suo rettangolo] (vedi shape).
     Controllato guardando ~250 foto: il logo da solo non basta (fogli di istruzioni), il logo manca nelle scatole
     scure o rosse; una scatola riempie almeno il 75% del suo rettangolo, un set montato o un gadget no."""
     logo, edge, fill = why
     # verifica 1/11: scatole alte e scure (Star Wars UCS, Disney) hanno meno bianco intorno ma sono piene: edge 0.69, fill 0.92
-    return bool((logo and fill >= 0.55) or (edge >= 0.7 and fill >= 0.75) or (edge >= 0.6 and fill >= 0.9))
+    # solo per i set veri: nei gadget, libri e poster una foto cosi' non e' una scatola
+    return bool((logo and fill >= 0.55) or (edge >= 0.7 and fill >= 0.75) or (real_set and edge >= 0.6 and fill >= 0.9))
 
 
 def analyze(path, kind, back=None):
@@ -186,7 +187,7 @@ def analyze_array(a, kind, path=None, ratio=None):
     white_edge, fill = shape(a)
     has_logo = bool(logo) and logo[0] < w * 0.45 and logo[1] < h * 0.45
     why = [int(has_logo), round(white_edge, 2), round(fill, 2)]
-    if is_front(why):
+    if is_front(why, kind == "alt1crop"):
         return path, {"f": 1, "why": why, "v": VERSION}, None
     if kind == "alt1crop" and white_edge >= 0.7:
         rect = box_rect(a, ratio, 0.9)
