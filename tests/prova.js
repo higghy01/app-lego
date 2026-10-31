@@ -40,6 +40,9 @@ const check = (ok, msg) => { if (!ok) throw new Error("NON VA: " + msg); console
     await page.goto(base + "#/temi");
     await page.waitForSelector(".tile", { timeout: 20000 });
     check((await page.locator(".tiles .tile").count()) >= 20, "pagina Temi con le caselle dei temi");
+    // (le foto esterne nella prova non si caricano: si controlla che la copertina sia quella dei personaggi)
+    check((await page.locator('.tiles .tile:has-text("Star Wars") .figs-cover').count()) === 1,
+      "copertina di Star Wars con i personaggi simbolo");
 
     await page.click('.tabs a[data-tab="catalogo"]');
     await page.waitForSelector("#results li");
@@ -67,6 +70,7 @@ const check = (ok, msg) => { if (!ok) throw new Error("NON VA: " + msg); console
 
     await page.click('[data-mode="cat"]');
     await page.waitForSelector(".cat-tile");
+    check((await page.locator(".cat-tile .figs-cover .cat-count").count()) === 1, "categoria della collezione con i personaggi e il numero");
     check(/Star Wars/.test(await page.textContent(".cat-tile")) && (await page.locator(".cat-tile").count()) === 1,
       "Collezione per categoria: solo Star Wars, con il set costruito");
     await page.click(".cat-tile");

@@ -265,7 +265,10 @@ async function loadCatalog() {
     for (let i = 1; i < s.chain.length; i++) (children[s.chain[i - 1]] ||= new Set()).add(s.chain[i]);
   }
   const rootThemes = byTheme(new Set(sets.map((s) => s.root).filter((id) => id != null)));
-  state.catalog = { generated: raw.generated, sets, bySetNum, themes, rootThemes, children, byTheme, imgBase: raw.imgBase, collator };
+  // Personaggi simbolo di ogni tema (copertine delle categorie): foto delle minifigure di Rebrickable.
+  const themeFigs = {};
+  for (const [id, imgs] of Object.entries(raw.themeFigs || {})) themeFigs[id] = imgs.map((i) => imgUrl(i, raw.imgBase));
+  state.catalog = { generated: raw.generated, sets, bySetNum, themes, rootThemes, children, byTheme, imgBase: raw.imgBase, collator, themeFigs };
 }
 
 // Testo in cui cercare (nome, codice, temi), preparato la prima volta che si cerca.
@@ -651,14 +654,16 @@ const byRelease = (a, b) => {
   return (isShopSet(b) - isShopSet(a)) || (!!boxThumb(b) - !!boxThumb(a)) || b.codeRank - a.codeRank;
 };
 
-// Foto della scatola (Brickset) come [foto, miniatura], se c'è. "box: 1" vuol dire la foto principale
-// di Brickset, che per i set vecchi e per quelli senza altre foto è la scatola o la bustina.
+// Fronte della scatola (Brickset) come [foto, miniatura, ritaglio], se c'è. "box: 1" vuol dire la foto principale
+// di Brickset, che per i set fino al 2009 e per quelli senza altre foto è il fronte della scatola o della bustina.
+// "crop" = la foto è la scatola con davanti il set montato: si mostra solo il rettangolo della scatola.
 function boxPhoto(setNum) {
-  const box = state.extra?.sets[setNum]?.box;
+  const x = state.extra?.sets[setNum];
+  const box = x?.box;
   if (!box) return null;
   const full = (p) => (p && !/^https?:/.test(p) ? state.extra.imgBase + p : p);
-  if (box === 1) return [full(`images/${setNum}.jpg`), full(`small/${setNum}.jpg`)];
-  return [full(box[0]), full(box[1]) || full(box[0])];
+  if (box === 1) return [full(`images/${setNum}.jpg`), full(`small/${setNum}.jpg`), null];
+  return [full(box[0]), full(box[1]) || full(box[0]), x.crop || null];
 }
 
 // Foto della scatola per gli elenchi, se c'è; altrimenti quella di Rebrickable.
@@ -667,10 +672,30 @@ function boxThumb(s) {
 }
 
 function listImg(s, cls = "thumb") {
-  const box = boxThumb(s);
-  if (!box) return imgTag(s, "thumb").replace('class="thumb"', `class="${cls}"`);
-  return `<img class="${cls}" src="${esc(box)}" data-full="${esc(s.img)}" alt="" loading="lazy" decoding="async" onerror="imgFallback(this)">`;
+  const photo = boxPhoto(s.setNum);
+  if (!photo) return imgTag(s, "thumb").replace('class="thumb"', `class="${cls}"`);
+  if (photo[2]) return cropImg(photo[0], photo[2], cls, s);
+  return `<img class="${cls}" src="${esc(photo[1])}" data-full="${esc(s.img)}" alt="" loading="lazy" decoding="async" onerror="imgFallback(this)">`;
 }
+
+// Solo la scatola da una foto "scatola + set montato": un disegno SVG che mostra solo quel rettangolo
+// (la foto è sempre quella vera di Brickset, ritagliata). crop = [x, y, larghezza, altezza, rapporto] in frazioni.
+function cropImg(src, [x, y, w, h, ratio], cls, s) {
+  const W = 1000, H = Math.round(1000 * w / (h * ratio)); // proporzioni della foto intera
+  const vb = [x * W, y * H, w * W, h * H].map((v) => Math.round(v)).join(" ");
+  return `<svg class="${cls} crop-img" viewBox="${vb}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="" data-set="${esc(s.setNum)}">`
+    + `<image href="${esc(src)}" width="${W}" height="${H}" preserveAspectRatio="none" onerror="cropFallback(this)"/></svg>`;
+}
+
+// La foto della scatola non si carica (es. senza internet): si prova la foto di Rebrickable, come gli altri set.
+window.cropFallback = (image) => {
+  const svg = image.closest("svg");
+  const s = state.catalog.bySetNum.get(svg.dataset.set);
+  const cls = [...svg.classList].filter((c) => c !== "crop-img").join(" ");
+  const tmp = document.createElement("div");
+  tmp.innerHTML = s ? imgTag(s, "thumb").replace('class="thumb"', `class="${cls}"`) : `<div class="${cls}"></div>`;
+  svg.replaceWith(tmp.firstChild);
+};
 
 const isRealSet = (s) => s.parts != null || s.figs;
 
@@ -735,13 +760,25 @@ function themeIndex() {
   return themeIndexCache;
 }
 
-// Copertina di un tema: la scatola del set simbolo se Brickset ce l'ha (la scatola va sempre per prima);
-// se no la foto del set montato, con lo sfondo bianco che prende il colore del tema.
-function themeCoverImg(t, s) {
-  if (!s) return '<div class="tile-img"></div>';
-  if (!t.cover || boxThumb(s)) return listImg(s, "tile-img");
-  return `<span class="tile-cover">${imgTag(s, "tile-img")}</span>`;
+// Copertina di una categoria (sasha 31/10: "un'immagine che rappresenta il brand o una cosa chiave, tipo Marvel
+// gli Avengers"): i personaggi simbolo del tema (minifigure di Rebrickable, scelti a mano in build_catalog.py).
+// I temi senza personaggi (Technic, Botanicals...) mostrano il set simbolo montato: mai la scatola, che è già negli elenchi.
+// Lo sfondo bianco delle foto prende il colore del tema. "after" = cose in più dentro la copertina (es. il numero).
+function themeCoverImg(t, s, cls = "", after = "") {
+  const figs = state.catalog.themeFigs[t.theme.id];
+  if (figs?.length) {
+    const imgs = figs.map((src) => `<img class="fig" src="${esc(src)}" alt="" loading="lazy" decoding="async" onerror="figCoverError(this)">`).join("");
+    return `<span class="tile-cover figs-cover ${cls}"><span class="figs-row">${imgs}</span>${after}</span>`;
+  }
+  return `<span class="tile-cover ${cls}">${s ? imgTag(s, "tile-img").replace('class="thumb"', 'class="tile-img"') : '<div class="tile-img"></div>'}${after}</span>`;
 }
+
+// Un personaggio che non si carica sparisce; se non ne resta nessuno, il mattoncino disegnato.
+window.figCoverError = (img) => {
+  const row = img.parentElement;
+  img.remove();
+  if (!row.children.length) row.outerHTML = '<div class="tile-img"></div>';
+};
 
 function renderThemes() {
   setHeader("Temi LEGO");
@@ -953,9 +990,10 @@ async function fillGallery(s) {
   // in extra.json quale foto è la scatola, la stessa usata negli elenchi.
   const boxUrl = boxPhoto(s.setNum)?.[0];
   // Se extra.json non è ancora arrivato si riconosce la scatola dal nome della foto.
+  // (solo il fronte: Box1, Box3, Box4, "box", "-xx-23-"; mai il retro Box5/Box6 o la scatola col set montato)
   const isBox = (u) => {
     const name = u.split("/").pop();
-    return !/lifestyle/i.test(name) && /(?:^|[_ -]|\d)(?:box(\d*|prod\d*|pod|front|back)|packaging)(?=[_. (-]|v\d|$)|-xx-23-/i.test(name);
+    return !/back|hinten|rear|inside|innen|open|lifestyle/i.test(name) && /(?:^|[_ -]|\d)box(1|3|4|front)?(?=[_. (-]|v\d|$)|-xx-23-/i.test(name);
   };
   if (boxUrl) slides.push(extra[0]?.img === boxUrl ? extra.shift() : { img: boxUrl });
   else if (extra[0] && !state.extra && isBox(extra[0].img)) slides.push(extra.shift());
@@ -1788,12 +1826,13 @@ function catText(c) {
 
 function catTile(c, head = false) {
   const color = themeColor(c.theme.name);
-  const img = c.last ? listImg(c.last, "tile-img") : '<div class="tile-img"></div>';
+  // Copertina: i personaggi simbolo della categoria, oppure (temi senza personaggi) l'ultimo set che ha costruito, montato.
+  const count = `<span class="cat-count" aria-hidden="true">${fmtNum(c.built)}</span>`;
   // Sottotemi in cui ha costruito qualcosa (es. Batman): così la categoria si riconosce subito.
   const subs = [...c.subs.values()].filter((x) => x.built).sort((a, b) => b.built - a.built || a.name.localeCompare(b.name, "it"));
   const subsText = subs.length ? `<span class="cat-subs">${subs.slice(0, 3).map((x) => esc(x.name)).join(" · ")}${subs.length > 3 ? ` · +${subs.length - 3}` : ""}</span>` : "";
   const total = catalogCount(c.id);
-  const inner = `<span class="tile-cover cat-pic">${img}<span class="cat-count" aria-hidden="true">${fmtNum(c.built)}</span></span>
+  const inner = `${themeCoverImg({ theme: c.theme }, c.last, "cat-pic", count)}
     <span class="theme-head-info">
       <span class="tile-name">${esc(c.theme.name)}</span>${subsText}
       ${progressBar(c.built, c.sets.length)}
