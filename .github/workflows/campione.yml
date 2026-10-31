@@ -2,16 +2,17 @@ name: Verifica foto (temporaneo)
 on:
   push:
     branches: [claude/project-thread-3qjckp]
-    paths: [campione/debug.py]
+    paths: [campione/giro.py]
 permissions:
   contents: write
 jobs:
   fogli:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-      - run: pip install pillow numpy scipy && python campione/debug.py
+      - run: pip install pillow numpy scipy && python campione/giro.py
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          git add campione && git commit -m "Fogli verifica foto" && git push
+          git add campione data-src && git commit -m "Fogli verifica foto" && git push

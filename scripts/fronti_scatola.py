@@ -107,6 +107,21 @@ def analyze(path, kind):
     return analyze_array(a, kind, path)
 
 
+def shape(a):
+    """Quanto la foto sembra una scatola: bordi bianchi intorno (non una foto d'ambiente) e la sagoma che
+    riempie quasi tutto il suo rettangolo (un set montato lascia tanto bianco tra i pezzi)."""
+    h, w, _ = a.shape
+    ink = a.min(axis=2) < 232
+    edge = np.concatenate([ink[:2].ravel(), ink[-2:].ravel(), ink[:, :2].ravel(), ink[:, -2:].ravel()])
+    ys, xs = np.where(ink)
+    if not len(ys):
+        return 0.0, 0.0
+    box = ink[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    # i buchi chiusi (es. riflessi bianchi sulla scatola) contano come pieni
+    fill = ndimage.binary_fill_holes(box).mean()
+    return 1 - edge.mean(), float(fill)
+
+
 def analyze_array(a, kind, path=None):
     h, w, _ = a.shape
     logo = find_logo(a)
@@ -115,10 +130,11 @@ def analyze_array(a, kind, path=None):
         if not rect:
             return path, {"f": 0}, None
         x, y, bw, bh = rect
-        ok = bool(logo) and x * w - 2 <= logo[0] <= (x + bw * 0.5) * w and y * h - 2 <= logo[1] <= (y + bh * 0.4) * h
-        return path, ({"f": 1, "crop": rect} if ok else {"f": 0}), None
-    ok = bool(logo) and logo[0] < w * 0.45 and logo[1] < h * 0.45
-    return path, {"f": int(ok)}, None
+        return path, {"f": 1, "crop": rect + [round(bw * w / (bh * h), 3)]}, None
+    white_edge, fill = shape(a)
+    has_logo = bool(logo) and logo[0] < w * 0.45 and logo[1] < h * 0.45
+    ok = has_logo or (white_edge > 0.9 and fill > 0.82)
+    return path, {"f": int(ok), "why": [int(has_logo), round(white_edge, 2), round(fill, 2)]}, None
 
 
 def candidates(photos, done):
