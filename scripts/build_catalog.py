@@ -181,10 +181,14 @@ def build(out_dir, src=None):
                n_figs if s["set_num"] in main_inv else None]
         # Rebrickable da' 0 pezzi ai set appena annunciati (inventario non ancora caricato): l'app li
         # nasconderebbe come gadget. Se Brickset conosce il numero di pezzi lo usiamo, segnando da dove viene.
-        if not row[4] and extra.get(s["set_num"], {}).get("pcs"):
+        # "1 pezzo" invece e' quasi sempre un gadget (CD, tappetino, sensore): resta senza numero, come prima.
+        if not row[4] and (extra.get(s["set_num"], {}).get("pcs") or 0) > 1:
             row[4] = extra[s["set_num"]]["pcs"]
             row.append("Brickset")
             n_pcs += 1
+            # Inventario vuoto: anche "0 minifigure" non e' un dato vero, meglio "non disponibile".
+            if not n_figs:
+                row[6] = None
         sets.append(row)
     sets.sort(key=lambda r: (-(r[2] or 0), r[0]))
 
