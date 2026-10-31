@@ -27,8 +27,8 @@ DATA_SRC = Path(__file__).resolve().parent.parent / "data-src"
 BRICKSET_FILE = DATA_SRC / "brickset.json"
 BRICKSET_TEXTS = DATA_SRC / "brickset-testi.json"
 BRICKSET_PHOTOS = DATA_SRC / "brickset-foto.json"
+NO_MAIN_PHOTO = DATA_SRC / "brickset-senza-foto-principale.txt"
 BRICKSET_IMG = "https://images.brickset.com/sets/"
-MAIN_IS_BOX_BEFORE = 2005  # prima di quest'anno la foto principale di Brickset e' la scatola
 DETAIL_FILES = 64  # descrizioni e foto divise in tanti file piccoli: l'app apre solo quello del set
 
 
@@ -73,11 +73,15 @@ def to_int(value):
 
 
 def box_rank(img, alt1_box=True):
-    """0 fronte della scatola (Box1, Box_front, "-xx-23-"), 1 scatola col set montato (boxprod), 2 altre foto
+    """0 fronte della scatola (Box1, Box_front, "-xx-23-"), 1 scatola col set montato (boxprod, "<set>.png"), 2 altre foto
     della scatola (Box2, Box5...), 2.5 retro (Box_back), 2.8 "alt1", 3 tutto il resto. Brickset non le mette sempre in quest'ordine.
     Controllato guardando le foto (31/10): "NNNN-0000-xx-23-1" (set 2000-2012) e' sempre la scatola; "alt1" (set dal 2010)
-    quasi sempre, tranne nei set con foto "1to1" (alt1_box=False), dove spesso e' il modello o una foto d'ambiente."""
-    name = img[0].rsplit("/", 1)[-1].lower()
+    quasi sempre, tranne nei set con foto "1to1" (alt1_box=False), dove spesso e' il modello o una foto d'ambiente.
+    Verifica 31/10: la foto che si chiama solo col numero del set e ".png" (es. 60432.png) e' la scatola col set montato (30 su 30)."""
+    path = img[0].rsplit("/", 2)
+    name = path[-1].lower()
+    if len(path) == 3 and re.fullmatch(re.escape(path[-2].split("-")[0].lower()) + r"\.png(\.jpg)?", name):
+        return 1
     m = re.search(r"(?:^|[_ -]|\d)(?:box(\d*|prod\d*|pod|front|back)|packaging)(?=[_. (-]|v\d|$)", name)
     # "Lifestyle_packaging" e' una foto d'ambiente, non la scatola
     if not m or "lifestyle" in name:
@@ -232,18 +236,23 @@ def build(out_dir, src=None):
             details[set_num]["imgs"] = imgs
             if box_rank(imgs[0], alt1_box) < 3 and set_num in extra:
                 extra[set_num]["box"] = imgs[0]  # foto della scatola, per gli elenchi
-    # Set senza foto della scatola tra quelle in piu': si usa la foto principale di Brickset (images/<set>.jpg),
-    # che per i set senza foto in piu' e per quelli vecchi e' quasi sempre la scatola o la bustina
-    # (controllato a occhio su 120 set il 31/10); per i set nuovi con foto in piu' e' il modello, quindi no.
+    # Set senza foto della scatola tra quelle in piu': si usa la foto principale di Brickset (images/<set>.jpg).
+    # Verifica 31/10 (guardate ~1.700 foto): per i set vecchi e per quelli senza foto in piu' e' quasi sempre
+    # la scatola o la bustina; anche per i set con foto in piu' ma senza scatola riconosciuta lo e' spesso
+    # (giochi, set promozionali, set 2005-2012), e quando non lo e' mostra il set montato, come la foto di Rebrickable.
+    # Non per i set dove Brickset non ha la foto principale (elenco controllato, o "nomain" dal download).
     # "box": 1 vuol dire "foto principale di Brickset", l'app ricostruisce l'indirizzo.
-    years = {r[0]: r[2] for r in sets}
+    no_main = set()
+    if NO_MAIN_PHOTO.exists():
+        no_main = {l.strip() for l in NO_MAIN_PHOTO.read_text(encoding="utf-8").splitlines() if l.strip() and not l.startswith("#")}
+    years = {r[0] for r in sets}
     n_main = 0
     for set_num, info in extra.items():
-        if "box" in info or set_num not in years:
+        missing = info.pop("nomain", False) or set_num in no_main
+        if "box" in info or set_num not in years or missing:
             continue
-        if not details.get(set_num, {}).get("imgs") or (years[set_num] or 0) < MAIN_IS_BOX_BEFORE:
-            info["box"] = 1
-            n_main += 1
+        info["box"] = 1
+        n_main += 1
     extra_file = {"generated": generated, "source": "Brickset", "imgBase": BRICKSET_IMG,
                   "detailFiles": DETAIL_FILES, "sets": extra}
     files = [("catalog.json", catalog), ("minifigs.json", minifigs), ("extra.json", extra_file)]
