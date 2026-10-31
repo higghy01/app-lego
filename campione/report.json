@@ -1,0 +1,2376 @@
+{
+ "375-chiaro": {
+  "temi": [
+   {
+    "name": "Animal Crossing",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-014745.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 48,
+      "ch": 85
+     },
+     {
+      "src": "fig-014744.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 48,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Architecture",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "Bluey",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-016276.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-016277.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-016279.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-016278.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Botanicals",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "Brickheadz",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "BrickLink Designer Program",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "Chinese Traditional Festivals",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "City",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-002153.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     },
+     {
+      "src": "fig-009057.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     },
+     {
+      "src": "fig-008094.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Classic",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "Collectible Minifigures",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-007421.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     },
+     {
+      "src": "fig-001350.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     },
+     {
+      "src": "fig-001271.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Creator",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "Despicable Me 4",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-014979.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-014974.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-014975.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-014985.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Disney",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-005753.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-002093.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-013377.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-010624.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "DOTS",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "Dreamzzz",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-014147.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-014169.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-015802.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-014139.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Duplo",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "Fortnite",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-015563.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     },
+     {
+      "src": "fig-015565.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     },
+     {
+      "src": "fig-015567.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Friends",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-015747.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-015783.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-013293.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-013286.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Gabby's Dollhouse",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-014172.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     },
+     {
+      "src": "fig-014170.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     },
+     {
+      "src": "fig-014171.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Harry Potter",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-006052.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-006059.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-006051.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-006056.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Horizon Adventures",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "Icons",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "Jurassic World",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-001846.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     },
+     {
+      "src": "fig-002553.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     },
+     {
+      "src": "fig-012503.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "KPop Demon Hunters",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "LEGO Art",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "LEGO Ideas and CUUSOO",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "Minecraft",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-002118.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-001683.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-006478.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-006477.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Modular Buildings",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "Monkie Kid",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-011144.jpg",
+      "ok": true,
+      "nw": 1974,
+      "nh": 2816,
+      "cw": 48,
+      "ch": 85
+     },
+     {
+      "src": "fig-011137.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 48,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Nike",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "Ninjago",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-013771.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-013769.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-012117.jpg",
+      "ok": true,
+      "nw": 1729,
+      "nh": 2827,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-012115.jpg",
+      "ok": true,
+      "nw": 1404,
+      "nh": 2258,
+      "cw": 35,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "One Piece",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-016668.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-016666.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-016625.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-016631.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Pokémon",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "Seasonal",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-001479.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 48,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Shrek",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "Sonic The Hedgehog",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-014177.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 48,
+      "ch": 85
+     },
+     {
+      "src": "fig-014176.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 48,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Speed Champions",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "Star Wars",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-013445.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     },
+     {
+      "src": "fig-002086.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     },
+     {
+      "src": "fig-002687.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Super Heroes DC",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-001804.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-004901.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-005231.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-014215.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Super Heroes Marvel",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-005574.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-011410.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-012329.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     },
+     {
+      "src": "fig-010827.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 35,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Super Mario",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "Technic",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "The Hobbit and Lord of the Rings",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   },
+   {
+    "name": "The Legend of Zelda",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-015499.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     },
+     {
+      "src": "fig-015500.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     },
+     {
+      "src": "fig-017467.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 47,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Wednesday",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-015534.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 48,
+      "ch": 85
+     },
+     {
+      "src": "fig-015535.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 48,
+      "ch": 85
+     }
+    ]
+   },
+   {
+    "name": "Wicked",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 150,
+      "ch": 112
+     }
+    ]
+   }
+  ],
+  "collezione": [
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": false,
+    "imgs": [
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": false,
+    "imgs": [
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": false,
+    "imgs": [
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": false,
+    "imgs": [
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": false,
+    "imgs": [
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": false,
+    "imgs": [
+     true
+    ]
+   },
+   {
+    "figs": false,
+    "imgs": [
+     true
+    ]
+   }
+  ],
+  "errori": []
+ },
+ "320-scuro": {
+  "temi": [
+   {
+    "name": "Animal Crossing",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-014745.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 39,
+      "ch": 68
+     },
+     {
+      "src": "fig-014744.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 39,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Architecture",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "Bluey",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-016276.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-016277.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-016279.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-016278.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Botanicals",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "Brickheadz",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "BrickLink Designer Program",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "Chinese Traditional Festivals",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "City",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-002153.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     },
+     {
+      "src": "fig-009057.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     },
+     {
+      "src": "fig-008094.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Classic",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "Collectible Minifigures",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-007421.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     },
+     {
+      "src": "fig-001350.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     },
+     {
+      "src": "fig-001271.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Creator",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "Despicable Me 4",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-014979.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-014974.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-014975.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-014985.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Disney",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-005753.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-002093.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-013377.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-010624.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "DOTS",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "Dreamzzz",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-014147.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-014169.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-015802.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-014139.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Duplo",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "Fortnite",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-015563.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     },
+     {
+      "src": "fig-015565.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     },
+     {
+      "src": "fig-015567.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Friends",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-015747.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-015783.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-013293.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-013286.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Gabby's Dollhouse",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-014172.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     },
+     {
+      "src": "fig-014170.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     },
+     {
+      "src": "fig-014171.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Harry Potter",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-006052.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-006059.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-006051.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-006056.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Horizon Adventures",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "Icons",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "Jurassic World",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-001846.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     },
+     {
+      "src": "fig-002553.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     },
+     {
+      "src": "fig-012503.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "KPop Demon Hunters",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "LEGO Art",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "LEGO Ideas and CUUSOO",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "Minecraft",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-002118.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-001683.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-006478.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-006477.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Modular Buildings",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "Monkie Kid",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-011144.jpg",
+      "ok": true,
+      "nw": 1974,
+      "nh": 2816,
+      "cw": 39,
+      "ch": 68
+     },
+     {
+      "src": "fig-011137.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 39,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Nike",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "Ninjago",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-013771.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-013769.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-012117.jpg",
+      "ok": true,
+      "nw": 1729,
+      "nh": 2827,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-012115.jpg",
+      "ok": true,
+      "nw": 1404,
+      "nh": 2258,
+      "cw": 29,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "One Piece",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-016668.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-016666.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-016625.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-016631.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Pokémon",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "Seasonal",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-001479.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 39,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Shrek",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "Sonic The Hedgehog",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-014177.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 39,
+      "ch": 68
+     },
+     {
+      "src": "fig-014176.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 39,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Speed Champions",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "Star Wars",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-013445.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     },
+     {
+      "src": "fig-002086.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     },
+     {
+      "src": "fig-002687.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Super Heroes DC",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-001804.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-004901.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-005231.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-014215.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Super Heroes Marvel",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-005574.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-011410.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-012329.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     },
+     {
+      "src": "fig-010827.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 29,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Super Mario",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "Technic",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "The Hobbit and Lord of the Rings",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   },
+   {
+    "name": "The Legend of Zelda",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-015499.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     },
+     {
+      "src": "fig-015500.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     },
+     {
+      "src": "fig-017467.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 38,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Wednesday",
+    "figs": true,
+    "imgs": [
+     {
+      "src": "fig-015534.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 39,
+      "ch": 68
+     },
+     {
+      "src": "fig-015535.jpg",
+      "ok": true,
+      "nw": 800,
+      "nh": 800,
+      "cw": 39,
+      "ch": 68
+     }
+    ]
+   },
+   {
+    "name": "Wicked",
+    "figs": false,
+    "imgs": [
+     {
+      "src": "250x250p.jpg",
+      "ok": true,
+      "nw": 250,
+      "nh": 250,
+      "cw": 122,
+      "ch": 92
+     }
+    ]
+   }
+  ],
+  "collezione": [
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": false,
+    "imgs": [
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": false,
+    "imgs": [
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": false,
+    "imgs": [
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": false,
+    "imgs": [
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": false,
+    "imgs": [
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true
+    ]
+   },
+   {
+    "figs": true,
+    "imgs": [
+     true,
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "figs": false,
+    "imgs": [
+     true
+    ]
+   },
+   {
+    "figs": false,
+    "imgs": [
+     true
+    ]
+   }
+  ],
+  "errori": []
+ }
+}
