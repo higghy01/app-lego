@@ -1,0 +1,31 @@
+name: Verifica fronte scatola (temporaneo)
+on:
+  push:
+    branches: [claude/project-thread-3mfs1r]
+    paths: [campione/verifica.js, campione/fogli.py]
+permissions:
+  contents: write
+jobs:
+  fogli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: mkdir -p _site && cp -r app/. _site/ && python scripts/build_catalog.py _site/data
+      - run: pip install pillow && python campione/fogli.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: |
+          npm install --no-save --no-audit --no-fund playwright@1.63.0
+          npx playwright install --with-deps chromium
+          node campione/verifica.js
+          python campione/copertine.py
+      - if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin claude/project-thread-3mfs1r || true
+          git add campione && git commit -m "Fogli verifica" && git push
