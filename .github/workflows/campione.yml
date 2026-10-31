@@ -2,7 +2,7 @@ name: Verifica fronte scatola (temporaneo)
 on:
   push:
     branches: [claude/project-thread-3mfs1r]
-    paths: [campione/verifica.js, campione/fogli.py]
+    paths: [campione/verifica.js, campione/fogli.py, campione/giro2.py]
 permissions:
   contents: write
 jobs:
@@ -14,15 +14,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: mkdir -p _site && cp -r app/. _site/ && python scripts/build_catalog.py _site/data
-      - run: pip install pillow && python campione/fogli.py
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - run: |
-          npm install --no-save --no-audit --no-fund playwright@1.63.0
-          npx playwright install --with-deps chromium
-          node campione/verifica.js
-          python campione/copertine.py
+      - run: pip install pillow && python campione/giro2.py
       - if: always()
         run: |
           git config user.name "github-actions[bot]"
