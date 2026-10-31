@@ -6,6 +6,13 @@ on:
   schedule:
     - cron: "0 4 * * *"   # ogni mattina
   workflow_dispatch:      # pulsante "Run workflow" per aggiornare a mano
+    inputs:
+      max_calls:
+        description: "Chiamate getSets (limite Brickset 100 al giorno: 0 se il job della notte e' gia' passato)"
+        default: "60"
+      max_images:
+        description: "Set di cui chiedere le foto in piu'"
+        default: "1500"
 
 permissions:
   contents: write
@@ -34,7 +41,7 @@ jobs:
           BRICKSET_API_KEY: ${{ secrets.BRICKSET_API_KEY }}
         run: |
           # Anche se Brickset si ferma (es. limite giornaliero), quanto scaricato si salva.
-          python scripts/fetch_brickset.py --max-calls 60 --max-images 1500 || echo "::warning title=Brickset::aggiornamento incompleto, riprovo domani"
+          python scripts/fetch_brickset.py --max-calls "${{ inputs.max_calls || 60 }}" --max-images "${{ inputs.max_images || 1500 }}" || echo "::warning title=Brickset::aggiornamento incompleto, riprovo domani"
           if [ -n "$(git status --porcelain data-src)" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
