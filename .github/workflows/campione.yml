@@ -2,7 +2,7 @@ name: Verifica foto (temporaneo)
 on:
   push:
     branches: [claude/project-thread-3qjckp]
-    paths: [campione/lista.json]
+    paths: [campione/prova.json, campione/prova_fronti.py, scripts/fronti_scatola.py]
 permissions:
   contents: write
 jobs:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: pip install pillow && python campione/controlla.py campione/lista.json
+      - run: pip install pillow numpy scipy && python campione/prova_fronti.py
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
