@@ -965,7 +965,7 @@ div.block-img {
   display: block; height: 100%; min-width: 14px; border-radius: 5px; background-color: var(--st-built);
   /* righe chiare come le fughe tra i mattoncini */
   background-image: repeating-linear-gradient(90deg, transparent 0 22px, rgba(255, 255, 255, .35) 22px 24px);
-  transform-origin: left; animation: bar-grow .7s cubic-bezier(.3, .7, .4, 1) .15s both;
+  transform-origin: left; animation: bar-grow .7s cubic-bezier(.3, .7, .4, 1) calc(.15s + var(--bars-skip, 0ms)) both;
 }
 .cat-bar.done > span { background-color: #f2b705; }
 @keyframes bar-grow { from { transform: scaleX(0); } }
@@ -976,9 +976,9 @@ div.block-img {
 :root[data-theme="dark"] .cat-done { color: #ffd34d; }
 .cat-plus {
   display: inline-block; font: 700 13px var(--font-fun); color: #fff; background: var(--st-built);
-  border-radius: 6px; padding: 0 6px; animation: snap .5s ease-out .4s both;
+  border-radius: 6px; padding: 0 6px; animation: snap .5s ease-out calc(.4s + var(--bars-skip, 0ms)) both;
 }
-.cat-tile.grew .cat-count { animation: snap .5s ease-out .35s both; }
+.cat-tile.grew .cat-count { animation: snap .5s ease-out calc(.35s + var(--bars-skip, 0ms)) both; }
 #view > .cat-tile + .chips.scroll { margin-top: 4px; }
 #view > .cat-tile ~ .btn.full { margin-top: 16px; }
 #view > .cat-tile ~ .btn.full { display: block; color: inherit; white-space: normal; text-align: center; text-decoration: none; height: auto; min-height: var(--tap); line-height: 1.25; padding-top: 10px; padding-bottom: 10px; }
