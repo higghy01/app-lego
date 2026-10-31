@@ -82,6 +82,9 @@ def compact(s):
         out["bt"] = True
     if s.get("additionalImageCount"):
         out["nimg"] = s["additionalImageCount"]
+    # Senza foto principale su Brickset: l'app non la usa come foto della scatola.
+    if not (s.get("image") or {}).get("imageURL"):
+        out["nomain"] = True
     # Numero di pezzi: serve quando Rebrickable non ce l'ha ancora (set appena annunciati, senza inventario).
     if s.get("pieces"):
         out["pcs"] = int(s["pieces"])
