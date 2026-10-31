@@ -180,7 +180,7 @@
     "figs": true,
     "imgs": [
      {
-      "src": "fig-007421.jpg",
+      "src": "fig-017907.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
@@ -232,7 +232,7 @@
       "ch": 85
      },
      {
-      "src": "fig-014974.jpg",
+      "src": "fig-011252.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
@@ -240,7 +240,7 @@
       "ch": 85
      },
      {
-      "src": "fig-014975.jpg",
+      "src": "fig-011250.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
@@ -706,18 +706,18 @@
       "ch": 85
      },
      {
-      "src": "fig-012117.jpg",
+      "src": "fig-014587.jpg",
       "ok": true,
-      "nw": 1729,
-      "nh": 2827,
+      "nw": 800,
+      "nh": 800,
       "cw": 35,
       "ch": 85
      },
      {
-      "src": "fig-012115.jpg",
+      "src": "fig-016193.jpg",
       "ok": true,
-      "nw": 1404,
-      "nh": 2258,
+      "nw": 800,
+      "nh": 800,
       "cw": 35,
       "ch": 85
      }
@@ -728,7 +728,7 @@
     "figs": true,
     "imgs": [
      {
-      "src": "fig-016668.jpg",
+      "src": "fig-016647.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
@@ -736,7 +736,7 @@
       "ch": 85
      },
      {
-      "src": "fig-016666.jpg",
+      "src": "fig-016651.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
@@ -814,14 +814,6 @@
       "nh": 800,
       "cw": 48,
       "ch": 85
-     },
-     {
-      "src": "fig-014176.jpg",
-      "ok": true,
-      "nw": 800,
-      "nh": 800,
-      "cw": 48,
-      "ch": 85
      }
     ]
    },
@@ -844,19 +836,11 @@
     "figs": true,
     "imgs": [
      {
-      "src": "fig-013445.jpg",
-      "ok": true,
-      "nw": 800,
-      "nh": 800,
-      "cw": 47,
-      "ch": 85
-     },
-     {
       "src": "fig-002086.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
-      "cw": 47,
+      "cw": 48,
       "ch": 85
      },
      {
@@ -864,7 +848,7 @@
       "ok": true,
       "nw": 800,
       "nh": 800,
-      "cw": 47,
+      "cw": 48,
       "ch": 85
      }
     ]
@@ -874,19 +858,11 @@
     "figs": true,
     "imgs": [
      {
-      "src": "fig-001804.jpg",
+      "src": "fig-014213.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
-      "cw": 35,
-      "ch": 85
-     },
-     {
-      "src": "fig-004901.jpg",
-      "ok": true,
-      "nw": 800,
-      "nh": 800,
-      "cw": 35,
+      "cw": 47,
       "ch": 85
      },
      {
@@ -894,15 +870,15 @@
       "ok": true,
       "nw": 800,
       "nh": 800,
-      "cw": 35,
+      "cw": 47,
       "ch": 85
      },
      {
-      "src": "fig-014215.jpg",
+      "src": "fig-004978.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
-      "cw": 35,
+      "cw": 47,
       "ch": 85
      }
     ]
@@ -912,7 +888,7 @@
     "figs": true,
     "imgs": [
      {
-      "src": "fig-005574.jpg",
+      "src": "fig-015921.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
@@ -1158,7 +1134,6 @@
    {
     "figs": true,
     "imgs": [
-     true,
      true
     ]
    },
@@ -1367,7 +1342,7 @@
     "figs": true,
     "imgs": [
      {
-      "src": "fig-007421.jpg",
+      "src": "fig-017907.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
@@ -1419,7 +1394,7 @@
       "ch": 68
      },
      {
-      "src": "fig-014974.jpg",
+      "src": "fig-011252.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
@@ -1427,7 +1402,7 @@
       "ch": 68
      },
      {
-      "src": "fig-014975.jpg",
+      "src": "fig-011250.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
@@ -1893,18 +1868,18 @@
       "ch": 68
      },
      {
-      "src": "fig-012117.jpg",
+      "src": "fig-014587.jpg",
       "ok": true,
-      "nw": 1729,
-      "nh": 2827,
+      "nw": 800,
+      "nh": 800,
       "cw": 29,
       "ch": 68
      },
      {
-      "src": "fig-012115.jpg",
+      "src": "fig-016193.jpg",
       "ok": true,
-      "nw": 1404,
-      "nh": 2258,
+      "nw": 800,
+      "nh": 800,
       "cw": 29,
       "ch": 68
      }
@@ -1915,7 +1890,7 @@
     "figs": true,
     "imgs": [
      {
-      "src": "fig-016668.jpg",
+      "src": "fig-016647.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
@@ -1923,7 +1898,7 @@
       "ch": 68
      },
      {
-      "src": "fig-016666.jpg",
+      "src": "fig-016651.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
@@ -2001,14 +1976,6 @@
       "nh": 800,
       "cw": 39,
       "ch": 68
-     },
-     {
-      "src": "fig-014176.jpg",
-      "ok": true,
-      "nw": 800,
-      "nh": 800,
-      "cw": 39,
-      "ch": 68
      }
     ]
    },
@@ -2061,7 +2028,7 @@
     "figs": true,
     "imgs": [
      {
-      "src": "fig-001804.jpg",
+      "src": "fig-014213.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
@@ -2069,7 +2036,7 @@
       "ch": 68
      },
      {
-      "src": "fig-004901.jpg",
+      "src": "fig-016514.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
@@ -2085,7 +2052,7 @@
       "ch": 68
      },
      {
-      "src": "fig-014215.jpg",
+      "src": "fig-004978.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
@@ -2099,7 +2066,7 @@
     "figs": true,
     "imgs": [
      {
-      "src": "fig-005574.jpg",
+      "src": "fig-015921.jpg",
       "ok": true,
       "nw": 800,
       "nh": 800,
@@ -2345,7 +2312,6 @@
    {
     "figs": true,
     "imgs": [
-     true,
      true
     ]
    },
