@@ -28,6 +28,7 @@ BRICKSET_FILE = DATA_SRC / "brickset.json"
 BRICKSET_TEXTS = DATA_SRC / "brickset-testi.json"
 BRICKSET_PHOTOS = DATA_SRC / "brickset-foto.json"
 BRICKSET_IMG = "https://images.brickset.com/sets/"
+MAIN_IS_BOX_BEFORE = 2005  # prima di quest'anno la foto principale di Brickset e' la scatola
 DETAIL_FILES = 64  # descrizioni e foto divise in tanti file piccoli: l'app apre solo quello del set
 
 
@@ -71,24 +72,35 @@ def to_int(value):
         return None
 
 
-def box_rank(img):
-    """0 fronte della scatola (Box1, Box_front), 1 scatola col set montato (boxprod), 2 altre foto
-    della scatola (Box2, Box5...), 2.5 retro (Box_back), 3 tutto il resto. Brickset non le mette sempre in quest'ordine."""
+def box_rank(img, alt1_box=True):
+    """0 fronte della scatola (Box1, Box_front, "-xx-23-"), 1 scatola col set montato (boxprod), 2 altre foto
+    della scatola (Box2, Box5...), 2.5 retro (Box_back), 2.8 "alt1", 3 tutto il resto. Brickset non le mette sempre in quest'ordine.
+    Controllato guardando le foto (31/10): "NNNN-0000-xx-23-1" (set 2000-2012) e' sempre la scatola; "alt1" (set dal 2010)
+    quasi sempre, tranne nei set con foto "1to1" (alt1_box=False), dove spesso e' il modello o una foto d'ambiente."""
     name = img[0].rsplit("/", 1)[-1].lower()
     m = re.search(r"(?:^|[_ -]|\d)(?:box(\d*|prod\d*|pod|front|back)|packaging)(?=[_. (-]|v\d|$)", name)
     # "Lifestyle_packaging" e' una foto d'ambiente, non la scatola
     if not m or "lifestyle" in name:
+        if re.search(r"-xx-23-", name):
+            return 0
+        if alt1_box and re.search(r"(?:^|[_-])alt1(?=[._]|$)", name):
+            return 2.8
         return 3
     if (m.group(1) or "") == "1" or "front" in name:
         return 0
     return 1 if (m.group(1) or "").startswith(("prod", "pod")) else 2.5 if "back" in name else 2
 
 
-def photo_order(img):
+def alt1_is_box(imgs):
+    """Nei set con foto "1to1" (2019-2021) la foto alt1 spesso non e' la scatola."""
+    return not any("1to1" in i[0].lower() for i in imgs)
+
+
+def photo_order(img, alt1_box=True):
     """La scatola per prima, poi le altre foto in ordine di nome, con i numeri contati come numeri
     (Brickset da' alt1, alt10, alt11, alt2: noi alt1, alt2 ... alt10)."""
     name = re.sub(r"(\.(jpe?g|png))+$", "", img[0].rsplit("/", 1)[-1].lower())
-    return box_rank(img), [int(p) if p.isdigit() else p for p in re.split(r"(\d+)", name)]
+    return box_rank(img, alt1_box), [int(p) if p.isdigit() else p for p in re.split(r"(\d+)", name)]
 
 
 def same_photo(img):
@@ -214,10 +226,24 @@ def build(out_dir, src=None):
         for set_num, info in json.loads(BRICKSET_PHOTOS.read_text(encoding="utf-8"))["sets"].items():
             if not info["imgs"]:
                 continue
-            imgs = unique_photos(sorted(info["imgs"], key=photo_order))  # la scatola sempre per prima, senza doppioni
+            alt1_box = alt1_is_box(info["imgs"])
+            # la scatola sempre per prima, senza doppioni
+            imgs = unique_photos(sorted(info["imgs"], key=lambda i: photo_order(i, alt1_box)))
             details[set_num]["imgs"] = imgs
-            if box_rank(imgs[0]) < 3 and set_num in extra:
+            if box_rank(imgs[0], alt1_box) < 3 and set_num in extra:
                 extra[set_num]["box"] = imgs[0]  # foto della scatola, per gli elenchi
+    # Set senza foto della scatola tra quelle in piu': si usa la foto principale di Brickset (images/<set>.jpg),
+    # che per i set senza foto in piu' e per quelli vecchi e' quasi sempre la scatola o la bustina
+    # (controllato a occhio su 120 set il 31/10); per i set nuovi con foto in piu' e' il modello, quindi no.
+    # "box": 1 vuol dire "foto principale di Brickset", l'app ricostruisce l'indirizzo.
+    years = {r[0]: r[2] for r in sets}
+    n_main = 0
+    for set_num, info in extra.items():
+        if "box" in info or set_num not in years:
+            continue
+        if not details.get(set_num, {}).get("imgs") or (years[set_num] or 0) < MAIN_IS_BOX_BEFORE:
+            info["box"] = 1
+            n_main += 1
     extra_file = {"generated": generated, "source": "Brickset", "imgBase": BRICKSET_IMG,
                   "detailFiles": DETAIL_FILES, "sets": extra}
     files = [("catalog.json", catalog), ("minifigs.json", minifigs), ("extra.json", extra_file)]
@@ -234,7 +260,8 @@ def build(out_dir, src=None):
     n_photos = sum(1 for d in details.values() if d.get("imgs"))
     n_desc = sum(1 for d in details.values() if d.get("desc"))
     summary = (f"{len(sets)} set, {len(themes)} temi, {len(figs)} minifigure, {len(extra)} set con dati Brickset, "
-               f"{n_desc} con descrizione, {n_photos} con foto in piu', {n_pcs} con pezzi da Brickset")
+               f"{n_desc} con descrizione, {n_photos} con foto in piu', {n_pcs} con pezzi da Brickset, "
+               f"{sum(1 for e in extra.values() if isinstance(e.get('box'), list))} con foto della scatola, {n_main} con la foto principale di Brickset")
     print(f"{summary} -> {out}")
     if os.environ.get("GITHUB_ACTIONS"):
         sample = {s[0]: s[1:] for s in sets if s[0] in ("10294-1", "75192-1")}
