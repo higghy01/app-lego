@@ -184,7 +184,9 @@ def pick_front(imgs, year, checked):
             continue
         if k == "prod" and not (seen and seen.get("crop")):
             continue
-        cand = (order[k], photo_order(img), img, seen.get("crop") if k == "prod" else None)
+        # alt1 ritagliata (verifica 1/11): era la scatola piccola + il set montato, come boxprod
+        crop = seen.get("crop") if seen and k in ("prod", "alt1") else None
+        cand = (order["prod"] if crop else order[k], photo_order(img), img, crop)
         if best is None or cand[:2] < best[:2]:
             best = cand
     return (best[2], best[3]) if best else None
