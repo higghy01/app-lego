@@ -2,10 +2,9 @@
 
 Il nome della foto non basta sempre (sasha 31/10: "solo il fronte della scatola"):
 - "alt1" di solito e' la scatola, ma a volte e' il set montato o una foto d'ambiente;
-- le foto con un numero a caso (es. 75645_98067.jpg) a volte sono la scatola, a volte no;
 - "boxprod" (e "<set>.png") e' la scatola con davanti il set montato: si ritaglia solo la scatola.
 Regole (controllate guardando le foto):
-- fronte = c'e' il logo LEGO (quadrato rosso con le lettere bianche) in alto a sinistra;
+- fronte = il logo LEGO in alto a sinistra, oppure una sagoma piena da scatola su sfondo bianco (is_front);
 - ritaglio di boxprod = il rettangolo della scatola, che sta in alto a sinistra su sfondo bianco.
 Il risultato va in data-src/brickset-fronti.json ({"imgs": {foto: {"f": 0|1, "crop": [x, y, l, a]}}},
 misure in frazioni della foto), che build_catalog.py usa per scegliere la foto degli elenchi.
@@ -69,14 +68,16 @@ def find_logo(a):
 
 
 def box_rect(a):
-    """Rettangolo della scatola in una foto "boxprod": sfondo bianco, scatola in alto a sinistra, set montato davanti."""
+    """Rettangolo della scatola in una foto "boxprod": sfondo bianco, scatola in alto a sinistra, set montato davanti.
+    Il bordo destro si misura su piu' righe in alto (li' il set montato non arriva quasi mai), quello in basso su piu'
+    colonne: il set montato spesso tocca la scatola, quindi vale la misura su cui almeno due colonne sono d'accordo."""
     h, w, _ = a.shape
     ink = a.min(axis=2) < 232
     rows = np.where(ink[:, : int(w * 0.7)].sum(axis=1) > w * 0.08)[0]
     cols = np.where(ink[: int(h * 0.7), :].sum(axis=0) > h * 0.08)[0]
     if not len(rows) or not len(cols):
         return None
-    top, left = rows[0], cols[0]
+    top, left = int(rows[0]), int(cols[0])
 
     def run(line, start):
         gap = 0
@@ -89,14 +90,31 @@ def box_rect(a):
                     return k - gap + 1
         return len(line)
 
-    y = min(h - 1, top + max(3, int(h * 0.03)))
-    x = min(w - 1, left + max(3, int(w * 0.03)))
-    right = run(ink[y], x)
-    bottom = run(ink[:, x], y)
+    rights = sorted(run(ink[min(h - 1, top + int(h * f))], left + 3) for f in (0.03, 0.08, 0.15))
+    right = rights[1]
+    if right - left < w * 0.2:
+        return None
+    xs = [left + int((right - left) * f) for f in (0.04, 0.25, 0.5, 0.75, 0.96)]
+    bottoms = sorted(run(ink[:, x], top + 3) for x in xs)
+    bottom = None
+    for i in range(len(bottoms) - 1):  # la prima misura confermata da un'altra colonna (entro il 2%)
+        if bottoms[i] - top > h * 0.2 and bottoms[i + 1] - bottoms[i] <= h * 0.02:
+            bottom = bottoms[i]
+            break
+    if bottom is None:
+        return None
     bw, bh = right - left, bottom - top
-    if bw < w * 0.25 or bh < h * 0.25 or not 0.5 <= bw / bh <= 2.2:
+    if bw < w * 0.25 or bh < h * 0.25 or bw > w * 0.85 or bh > h * 0.85 or not 0.5 <= bw / bh <= 2.4:
         return None
     return [round(left / w, 4), round(top / h, 4), round(bw / w, 4), round(bh / h, 4)]
+
+
+def is_front(why):
+    """why = [logo trovato, bordi bianchi, quanto la sagoma riempie il suo rettangolo] (vedi shape).
+    Controllato guardando ~250 foto: il logo da solo non basta (fogli di istruzioni), il logo manca nelle scatole
+    scure o rosse; una scatola riempie almeno il 75% del suo rettangolo, un set montato o un gadget no."""
+    logo, edge, fill = why
+    return bool((logo and fill >= 0.55) or (edge >= 0.7 and fill >= 0.75))
 
 
 def analyze(path, kind):
@@ -133,8 +151,8 @@ def analyze_array(a, kind, path=None):
         return path, {"f": 1, "crop": rect + [round(bw * w / (bh * h), 3)]}, None
     white_edge, fill = shape(a)
     has_logo = bool(logo) and logo[0] < w * 0.45 and logo[1] < h * 0.45
-    ok = has_logo or (white_edge > 0.9 and fill > 0.82)
-    return path, {"f": int(ok), "why": [int(has_logo), round(white_edge, 2), round(fill, 2)]}, None
+    why = [int(has_logo), round(white_edge, 2), round(fill, 2)]
+    return path, {"f": int(is_front(why)), "why": why}, None
 
 
 def candidates(photos, done):
