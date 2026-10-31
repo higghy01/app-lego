@@ -65,6 +65,14 @@ const check = (ok, msg) => { if (!ok) throw new Error("NON VA: " + msg); console
     await page.waitForTimeout(900);
     check((await page.locator(".stat b").first().textContent()) === "1", "Collezione: 1 set posseduto");
 
+    await page.click('[data-mode="cat"]');
+    await page.waitForSelector(".cat-tile");
+    check(/Star Wars/.test(await page.textContent(".cat-tile")) && (await page.locator(".cat-tile").count()) === 1,
+      "Collezione per categoria: solo Star Wars, con il set costruito");
+    await page.click(".cat-tile");
+    await page.waitForFunction(() => location.hash.startsWith("#/collezione/") && document.querySelector("#view .list li"));
+    check((await page.locator("#view .list li").count()) === 1, "categoria aperta con il suo set");
+
     await page.click('.tabs a[data-tab="backup"]');
     await page.waitForSelector("#export");
     check(/Catalogo: [\d.]+ set/.test(await page.textContent("#view")), "pagina Backup con la data del catalogo");
