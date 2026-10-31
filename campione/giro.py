@@ -43,3 +43,4 @@ for g,l in groups.items():
         dr.text((3,S+3),p.split("/")[1],fill="black")
         sheet.paste(tile,((n%cols)*(S+4),(n//cols)*(S+22)))
     sheet.save(f"campione/{g}-{part}.jpg",quality=80)
+# giro 2

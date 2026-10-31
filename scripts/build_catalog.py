@@ -33,6 +33,39 @@ BRICKSET_IMG = "https://images.brickset.com/sets/"
 DETAIL_FILES = 64  # descrizioni e foto divise in tanti file piccoli: l'app apre solo quello del set
 
 
+# Copertine delle categorie (sasha 31/10: "un'immagine che rappresenta il brand del set o una cosa chiave,
+# tipo Marvel metti gli Avengers"): i personaggi simbolo di ogni tema, con le foto delle minifigure di Rebrickable.
+# Scelti a mano (numero della minifigure su Rebrickable). I temi senza personaggi (Technic, Botanicals, Art...)
+# mostrano il loro set simbolo montato (in app.js, THEME_COVERS), mai la foto della scatola degli elenchi.
+THEME_FIGS = {
+    "Super Heroes Marvel": ["fig-005574", "fig-011410", "fig-012329", "fig-010827"],  # Iron Man, Captain America, Thor, Spider-Man
+    "Star Wars": ["fig-013445", "fig-002530", "fig-002086", "fig-002687"],  # Darth Vader, Luke, Yoda, R2-D2
+    "Super Heroes DC": ["fig-001804", "fig-004901", "fig-005231", "fig-014215"],  # Batman, Superman, Wonder Woman, Joker
+    "Harry Potter": ["fig-006052", "fig-006059", "fig-006051", "fig-006056"],  # Harry, Hermione, Ron, Silente
+    "Ninjago": ["fig-013771", "fig-013769", "fig-012117", "fig-012115"],  # Lloyd, Kai, Nya, Jay
+    "Friends": ["fig-015747", "fig-015783", "fig-013293", "fig-013286"],  # Aliya, Liann, Autumn, Leo
+    "Disney": ["fig-005753", "fig-002093", "fig-013377", "fig-010624"],  # Topolino, Elsa, Vaiana, Ariel
+    "Minecraft": ["fig-002118", "fig-001683", "fig-006478", "fig-006477"],  # Steve, Alex, Creeper, Zombie
+    "Jurassic World": ["fig-001846", "fig-002553", "fig-013882", "fig-012503"],  # Owen, Claire, Alan Grant, Ellie
+    "Dreamzzz": ["fig-014147", "fig-014169", "fig-015802", "fig-014139"],  # Mateo, Izzie, Cooper, Z-Blob
+    "Monkie Kid": ["fig-008248", "fig-011144", "fig-011137", "fig-008246"],  # Monkie Kid, Re Scimmia, Mei, Pigsy
+    "Wicked": ["fig-015543", "fig-015540"],  # Elphaba, Glinda
+    "Collectible Minifigures": ["fig-007421", "fig-006655", "fig-001350", "fig-001271"],  # Spaceman, Unikitty, Hot Dog, Banana
+    "Seasonal": ["fig-001479"],  # Babbo Natale
+    "Despicable Me 4": ["fig-014979", "fig-014974", "fig-014975", "fig-014985"],  # Gru e i Minions
+    "Bluey": ["fig-016276", "fig-016277", "fig-016279", "fig-016278"],  # Bluey, Bingo, Bandit, Chilli
+    "Fortnite": ["fig-015566", "fig-015563", "fig-015565", "fig-015567"],  # Peely, Raven, Cuddle Team Leader, Brite Bomber
+    "One Piece": ["fig-016668", "fig-016666", "fig-016625", "fig-016631"],  # Rufy, Zoro, Nami, Usopp
+    "Sonic The Hedgehog": ["fig-014177", "fig-014176", "fig-015299", "fig-014179"],  # Sonic, Tails, Knuckles, Amy
+    "Wednesday": ["fig-015534", "fig-015535"],  # Mercoledi', Enid
+    "Gabby's Dollhouse": ["fig-014172", "fig-014170", "fig-014171"],  # Gabby, Pandy Paws, MerCat
+    "Horizon Adventures": ["fig-016080", "fig-016081"],  # Aloy, Varl
+    "The Legend of Zelda": ["fig-015499", "fig-015500", "fig-017467"],  # Link, Zelda, Ganondorf
+    "Animal Crossing": ["fig-014745", "fig-014744", "fig-014739", "fig-014746"],  # Tom Nook, Fuffi, Julian, Rosie
+    "City": ["fig-002153", "fig-009057", "fig-008094"],  # Duke DeTain, Harl Hubbs, Freya McCloud
+}
+
+
 def detail_file(set_num):
     """Numero del file con i dettagli del set; l'app fa lo stesso calcolo (detailFile in app.js)."""
     h = 0
@@ -134,23 +167,22 @@ def front_kind(img, year=None):
 
 def front_candidates(set_num, imgs):
     """Foto che fronti_scatola.py deve guardare: alt1, foto con nome a caso, scatola+set (da ritagliare)."""
-    return [(img, {"alt1": "logo", "num": "logo", "prod": "crop"}[k]) for img in imgs
-            for k in [front_kind(img)] if k in ("alt1", "num", "prod")]
+    return [(img, {"alt1": "logo", "prod": "crop"}[k]) for img in imgs
+            for k in [front_kind(img)] if k in ("alt1", "prod")]
 
 
 def pick_front(imgs, year, checked):
     """La foto per gli elenchi: solo il fronte della scatola. Ritorna (foto, ritaglio o None) oppure None.
     checked = risultati di fronti_scatola.py ({foto: {"f": 0|1, "crop": [...]}})."""
-    order = {"front": 0, "alt1": 1, "num": 2, "prod": 3}
+    # Le foto con un nome a caso non si usano: guardate 84, una su quattro e' il retro della scatola.
+    order = {"front": 0, "alt1": 1, "prod": 2}
     best = None
     for img in imgs:
         k = front_kind(img, year)
-        if k is None:
+        if k is None or k == "num":
             continue
         seen = checked.get(img[0])
         if k == "alt1" and not (seen["f"] if seen else alt1_is_box(imgs)):
-            continue
-        if k == "num" and not (seen and seen["f"]):
             continue
         if k == "prod" and not (seen and seen.get("crop")):
             continue
@@ -273,12 +305,21 @@ def build(out_dir, src=None):
         sets.append(row)
     sets.sort(key=lambda r: (-(r[2] or 0), r[0]))
 
+    # Personaggi simbolo di ogni tema principale (copertine delle categorie), solo se Rebrickable ha la foto.
+    all_figs = {m["fig_num"]: short_img(m["img_url"]) for m in data["minifigs"] if m["img_url"]}
+    theme_figs = {}
+    for tid, (name, parent) in themes.items():
+        if parent is None and name in THEME_FIGS:
+            imgs = [all_figs[f] for f in THEME_FIGS[name] if f in all_figs]
+            if imgs:
+                theme_figs[tid] = imgs
+
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     catalog = {"generated": generated, "source": "Rebrickable", "imgBase": IMG_PREFIX,
                "fields": ["set_num", "name", "year", "theme_id", "num_parts", "img", "num_minifigs", "parts_from"],
-               "themes": themes, "sets": sets}
+               "themes": themes, "sets": sets, "themeFigs": theme_figs}
     minifigs = {"generated": generated, "imgBase": IMG_PREFIX,
                 "figs": figs, "sets": set_figs}
     # Descrizioni, tag e foto in piu': in file separati, letti solo aprendo la scheda del set.
