@@ -1,0 +1,139 @@
+2509-1 AdditionalImages/2509-1/2509_alt1.jpg size 480x357 red px 9444 comps 46
+  comp x351 y23 107x42 fill 0.31 white 0.01
+  comp x432 y25 11x2 fill 0.82 white 0.00
+  comp x326 y32 26x18 fill 0.63 white 0.00
+  comp x297 y34 25x16 fill 0.49 white 0.00
+  comp x441 y39 25x7 fill 0.21 white 0.00
+  comp x162 y40 125x25 fill 0.55 white 0.07
+  comp x313 y44 11x7 fill 0.69 white 0.00
+  comp x328 y46 46x33 fill 0.40 white 0.08
+  comp x377 y47 6x14 fill 0.54 white 0.00
+  comp x333 y51 11x8 fill 0.52 white 0.00
+  comp x394 y63 81x27 fill 0.35 white 0.00
+  comp x284 y64 9x8 fill 0.64 white 0.01
+  comp x87 y66 52x61 fill 0.55 white 0.14
+  comp x377 y68 17x22 fill 0.57 white 0.04
+  comp x342 y74 8x5 fill 0.40 white 0.00
+  comp x397 y83 10x8 fill 0.40 white 0.00
+  comp x447 y86 6x4 fill 0.67 white 0.00
+  comp x218 y106 47x16 fill 0.24 white 0.00
+  comp x374 y289 95x25 fill 0.47 white 0.22
+  comp x328 y310 12x11 fill 0.80 white 0.04
+  comp x221 y312 98x22 fill 0.32 white 0.22
+  comp x351 y314 13x4 fill 0.50 white 0.15
+  rect None
+  ink rows first [19 20 21] cols first [48 49 50]
+70595-1 AdditionalImages/70595-1/70595_alt1.jpg size 480x437 red px 20787 comps 316
+  comp x79 y7 349x140 fill 0.22 white 0.21
+  comp x322 y14 8x3 fill 0.62 white 0.00
+  comp x19 y42 34x7 fill 0.34 white 0.05
+  comp x271 y44 5x10 fill 0.56 white 0.00
+  comp x30 y45 33x8 fill 0.32 white 0.05
+  comp x54 y73 60x70 fill 0.56 white 0.15
+  comp x24 y76 3x28 fill 0.62 white 0.00
+  comp x34 y79 3x29 fill 0.63 white 0.00
+  comp x241 y103 11x7 fill 0.65 white 0.00
+  comp x404 y109 10x25 fill 0.66 white 0.00
+  comp x237 y111 44x18 fill 0.49 white 0.07
+  comp x295 y112 6x8 fill 0.65 white 0.00
+  comp x221 y115 10x7 fill 0.49 white 0.13
+  comp x300 y117 19x9 fill 0.44 white 0.00
+  comp x284 y120 8x5 fill 0.47 white 0.00
+  comp x11 y126 15x49 fill 0.56 white 0.00
+  comp x38 y146 2x8 fill 0.56 white 0.00
+  comp x391 y159 9x3 fill 0.63 white 0.00
+  comp x38 y181 1x6 fill 1.00 white 0.00
+  comp x13 y183 6x5 fill 0.80 white 0.00
+  comp x38 y195 1x7 fill 1.00 white 0.00
+  comp x139 y205 6x4 fill 0.83 white 0.00
+  comp x40 y224 1x15 fill 1.00 white 0.00
+  comp x24 y240 3x6 fill 0.67 white 0.00
+  comp x20 y244 8x9 fill 0.33 white 0.00
+  comp x40 y254 1x33 fill 1.00 white 0.00
+  comp x418 y255 8x10 fill 0.38 white 0.00
+  comp x412 y259 11x12 fill 0.45 white 0.00
+  comp x19 y266 6x5 fill 0.40 white 0.00
+  comp x390 y267 17x21 fill 0.43 white 0.00
+  comp x33 y277 4x6 fill 0.58 white 0.00
+  comp x34 y283 2x6 fill 0.58 white 0.00
+  comp x387 y283 7x9 fill 0.62 white 0.00
+  comp x40 y293 1x12 fill 1.00 white 0.00
+  comp x40 y308 1x10 fill 1.00 white 0.00
+  comp x40 y320 1x7 fill 1.00 white 0.00
+  comp x280 y340 7x2 fill 0.64 white 0.00
+  comp x355 y345 99x43 fill 0.31 white 0.12
+  comp x209 y353 6x2 fill 0.75 white 0.00
+  comp x244 y353 11x1 fill 1.00 white 0.00
+  comp x40 y358 1x22 fill 1.00 white 0.00
+  comp x435 y364 4x6 fill 0.71 white 0.00
+  comp x198 y368 152x44 fill 0.32 white 0.22
+  comp x181 y381 6x4 fill 0.46 white 0.00
+  comp x257 y384 5x13 fill 0.65 white 0.00
+  comp x111 y385 75x40 fill 0.45 white 0.12
+  comp x49 y386 12x4 fill 0.60 white 0.00
+  rect None
+  ink rows first [15 16 17] cols first [4 5 6]
+853561-1 AdditionalImages/853561-1/853561_alt1.jpg size 280x960 red px 3455 comps 2
+  comp x24 y147 65x65 fill 0.61 white 0.14
+  comp x196 y284 59x60 fill 0.25 white 0.41
+  rect [np.float64(0.0107), np.float64(0.0073), np.float64(0.975), np.float64(0.3698)]
+  ink rows first [7 8 9] cols first [3 4 5]
+5001375-1 AdditionalImages/5001375-1/5001375_alt1.jpg size 480x631 red px 0 comps 0
+  rect None
+  ink rows first [7 8 9] cols first [ 9 10 11]
+43257-1 AdditionalImages/43257-1/43257_boxprod_v39_en-gb.jpg size 480x480 red px 709 comps 9
+  comp x22 y15 10x1 fill 1.00 white 0.00
+  comp x11 y16 10x2 fill 0.65 white 0.05
+  comp x16 y17 22x3 fill 0.39 white 0.03
+  comp x17 y33 3x24 fill 0.67 white 0.00
+  comp x21 y35 4x25 fill 0.46 white 0.01
+  comp x35 y35 30x19 fill 0.49 white 0.12
+  comp x35 y50 30x19 fill 0.50 white 0.13
+  rect [np.float64(0.0), np.float64(0.0042), np.float64(0.475), np.float64(0.5062)]
+  ink rows first [2 3 4] cols first [0 1 2]
+43305-1 AdditionalImages/43305-1/43305_boxprod_v29.jpg size 480x479 red px 3267 comps 41
+  comp x24 y17 7x2 fill 0.57 white 0.00
+  comp x14 y19 6x1 fill 1.00 white 0.00
+  comp x12 y31 3x18 fill 0.37 white 0.00
+  comp x28 y32 26x17 fill 0.47 white 0.12
+  comp x16 y33 2x18 fill 0.53 white 0.00
+  comp x28 y46 26x16 fill 0.51 white 0.10
+  comp x103 y99 29x37 fill 0.50 white 0.00
+  comp x289 y215 54x69 fill 0.58 white 0.20
+  comp x227 y259 1x7 fill 1.00 white 0.00
+  comp x330 y312 9x5 fill 0.60 white 0.07
+  rect [np.float64(0.0), np.float64(0.0063), np.float64(0.4562), np.float64(0.5491)]
+  ink rows first [3 4 5] cols first [0 1 2]
+42658-1 AdditionalImages/42658-1/42658_boxprod_v39_en-gb.jpg size 480x480 red px 730 comps 47
+  comp x8 y38 7x8 fill 0.64 white 0.00
+  comp x31 y42 25x17 fill 0.45 white 0.10
+  comp x8 y52 7x9 fill 0.63 white 0.00
+  comp x31 y56 25x16 fill 0.50 white 0.10
+  comp x6 y135 7x15 fill 0.45 white 0.08
+  comp x12 y151 4x7 fill 0.36 white 0.00
+  comp x239 y182 9x11 fill 0.60 white 0.00
+  comp x263 y182 6x9 fill 0.83 white 0.00
+  comp x217 y413 6x5 fill 0.37 white 0.00
+  comp x200 y426 2x7 fill 0.64 white 0.00
+  rect None
+  ink rows first [3 4 5] cols first [0 1 2]
+42201-1 AdditionalImages/42201-1/42201_boxprod_v39_en-gb.jpg size 480x479 red px 1366 comps 83
+  comp x9 y30 2x15 fill 0.53 white 0.00
+  comp x23 y31 30x17 fill 0.51 white 0.10
+  comp x12 y32 2x15 fill 0.53 white 0.00
+  comp x24 y41 29x23 fill 0.41 white 0.14
+  comp x105 y117 6x8 fill 0.62 white 0.00
+  comp x179 y244 4x8 fill 0.53 white 0.00
+  comp x239 y284 23x17 fill 0.45 white 0.00
+  comp x236 y290 4x6 fill 0.54 white 0.00
+  comp x230 y306 4x8 fill 0.59 white 0.00
+  comp x212 y334 36x17 fill 0.38 white 0.03
+  comp x328 y382 5x7 fill 0.54 white 0.09
+  comp x226 y387 6x6 fill 0.42 white 0.00
+  comp x210 y424 4x6 fill 0.58 white 0.00
+  comp x199 y441 6x3 fill 0.67 white 0.00
+  comp x86 y443 6x1 fill 1.00 white 0.00
+  comp x190 y445 6x3 fill 0.50 white 0.00
+  comp x74 y475 18x2 fill 0.94 white 0.00
+  rect [np.float64(0.0021), np.float64(0.0063), np.float64(0.4667), np.float64(0.4697)]
+  ink rows first [3 4 5] cols first [1 2 3]
