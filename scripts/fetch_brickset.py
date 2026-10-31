@@ -33,7 +33,7 @@ IMG_PREFIX = "https://images.brickset.com/sets/"
 PHOTOS_REFRESH_DAYS = 30  # i set appena usciti ricevono foto nuove: si ricontrollano dopo un mese
 PHOTOS_RETRY_DAYS = 7  # un set la cui richiesta di foto e' fallita si riprova dopo una settimana
 PHOTOS_MAX_ERRORS = 3  # tanti errori di fila = limite o rete: ci si ferma fino a domani
-PHOTOS_FIRST_YEAR = 2000  # per i set piu' vecchi le foto in piu' non si chiedono
+PHOTOS_FIRST_YEAR = 0  # 31/10: finiti i set dal 2000, si chiedono anche quelli piu' vecchi (per la foto della scatola)
 
 
 def call(key, params, method="getSets"):

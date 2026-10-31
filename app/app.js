@@ -651,12 +651,19 @@ const byRelease = (a, b) => {
   return (isShopSet(b) - isShopSet(a)) || (!!boxThumb(b) - !!boxThumb(a)) || b.codeRank - a.codeRank;
 };
 
-// Foto della scatola (Brickset) per gli elenchi, se c'è; altrimenti quella di Rebrickable.
-function boxThumb(s) {
-  const box = state.extra?.sets[s.setNum]?.box;
+// Foto della scatola (Brickset) come [foto, miniatura], se c'è. "box: 1" vuol dire la foto principale
+// di Brickset, che per i set vecchi e per quelli senza altre foto è la scatola o la bustina.
+function boxPhoto(setNum) {
+  const box = state.extra?.sets[setNum]?.box;
   if (!box) return null;
   const full = (p) => (p && !/^https?:/.test(p) ? state.extra.imgBase + p : p);
-  return full(box[1]) || full(box[0]);
+  if (box === 1) return [full(`images/${setNum}.jpg`), full(`small/${setNum}.jpg`)];
+  return [full(box[0]), full(box[1]) || full(box[0])];
+}
+
+// Foto della scatola per gli elenchi, se c'è; altrimenti quella di Rebrickable.
+function boxThumb(s) {
+  return boxPhoto(s.setNum)?.[1] || null;
 }
 
 function listImg(s, cls = "thumb") {
@@ -728,14 +735,21 @@ function themeIndex() {
   return themeIndexCache;
 }
 
+// Copertina di un tema: la scatola del set simbolo se Brickset ce l'ha (la scatola va sempre per prima);
+// se no la foto del set montato, con lo sfondo bianco che prende il colore del tema.
+function themeCoverImg(t, s) {
+  if (!s) return '<div class="tile-img"></div>';
+  if (!t.cover || boxThumb(s)) return listImg(s, "tile-img");
+  return `<span class="tile-cover">${imgTag(s, "tile-img")}</span>`;
+}
+
 function renderThemes() {
   setHeader("Temi LEGO");
   setTab("temi");
   const { active, old } = themeIndex();
   const tile = (t) => {
-    // Il set simbolo si mostra con la foto del set montato: il suo sfondo bianco prende il colore del tema.
     const s = t.cover || t.newest;
-    const img = t.cover ? `<span class="tile-cover">${imgTag(s, "tile-img")}</span>` : s ? listImg(s, "tile-img") : '<div class="tile-img"></div>';
+    const img = themeCoverImg(t, s);
     return `<a class="tile" href="#/tema/${t.theme.id}" style="--tc:${themeColor(t.theme.name)}">${img}<span class="tile-name">${esc(t.theme.name)}</span><span class="tile-count">${fmtNum(t.count)} set</span></a>`;
   };
   // I temi vecchi sono mattoncini più piccoli, senza foto: sono tanti e così la pagina resta corta.
@@ -845,7 +859,7 @@ function drawThemeHead(id) {
   const t = themeIndex().active.concat(themeIndex().old).find((x) => x.theme.id === Number(id));
   if (!head || !t) { if (head) head.innerHTML = ""; return; }
   const s = t.cover || t.newest;
-  const img = t.cover ? `<span class="tile-cover">${imgTag(s, "tile-img")}</span>` : s ? listImg(s, "tile-img") : '<div class="tile-img"></div>';
+  const img = themeCoverImg(t, s);
   head.innerHTML = `<div class="tile theme-head" style="--tc:${themeColor(t.theme.name)}">${img}
     <span class="theme-head-info"><span class="tile-name">${t.count === 1 ? "1 set" : `${fmtNum(t.count)} set`}</span>
     ${t.from != null ? `<span class="tile-count">${t.from === t.to ? `uscito nel ${t.from}` : `dal ${t.from} al ${t.to}`}</span>` : ""}</span></div>`;
@@ -856,9 +870,9 @@ function drawThemeHead(id) {
 // e per ultima una pagina con i personaggi (minifigure di Rebrickable).
 
 function firstSlides(s) {
-  const box = state.extra?.sets[s.setNum]?.box;
+  const box = boxPhoto(s.setNum);
   const slides = [];
-  if (box) slides.push({ img: imgUrl(box[0], state.extra.imgBase) });
+  if (box) slides.push({ img: box[0] });
   if (s.img) slides.push({ img: s.img, thumb: thumbUrl(s.img) });
   return slides;
 }
@@ -935,12 +949,16 @@ async function fillGallery(s) {
   ]);
   const slides = [];
   const extra = details?.imgs || [];
-  // L'elenco arriva già ordinato con la scatola per prima (Box1, boxprod, Box5...).
+  // L'elenco arriva già ordinato con la scatola per prima (Box1, boxprod, alt1...): il catalogo segna
+  // in extra.json quale foto è la scatola, la stessa usata negli elenchi.
+  const boxUrl = boxPhoto(s.setNum)?.[0];
+  // Se extra.json non è ancora arrivato si riconosce la scatola dal nome della foto.
   const isBox = (u) => {
     const name = u.split("/").pop();
-    return !/lifestyle/i.test(name) && /(?:^|[_ -]|\d)(?:box(\d*|prod\d*|pod|front|back)|packaging)(?=[_. (-]|v\d|$)/i.test(name);
+    return !/lifestyle/i.test(name) && /(?:^|[_ -]|\d)(?:box(\d*|prod\d*|pod|front|back)|packaging)(?=[_. (-]|v\d|$)|-xx-23-/i.test(name);
   };
-  if (extra[0] && isBox(extra[0].img)) slides.push(extra.shift());
+  if (boxUrl) slides.push(extra[0]?.img === boxUrl ? extra.shift() : { img: boxUrl });
+  else if (extra[0] && !state.extra && isBox(extra[0].img)) slides.push(extra.shift());
   if (s.img) slides.push({ img: s.img });
   slides.push(...extra);
   const list = figs?.sets[s.setNum] || [];
