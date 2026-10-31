@@ -1,3 +1,0 @@
-crop 814
-crop-no 287
-alt1 si 5805 no 1993
