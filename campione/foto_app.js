@@ -1,0 +1,32 @@
+// Temporaneo: fotografie dell'app vera (con le immagini) per controllare a occhio.
+const http=require("http"),fs=require("fs"),path=require("path");
+const {chromium,devices}=require("playwright");
+const dir=path.resolve("_site");
+const T={".html":"text/html",".js":"text/javascript",".css":"text/css",".json":"application/json",".png":"image/png",".woff2":"font/woff2",".webmanifest":"application/manifest+json",".svg":"image/svg+xml"};
+const srv=http.createServer((q,r)=>{let f=path.join(dir,decodeURIComponent(q.url.split("?")[0]));if(fs.existsSync(f)&&fs.statSync(f).isDirectory())f=path.join(f,"index.html");if(!fs.existsSync(f)){r.writeHead(404);r.end();return;}r.writeHead(200,{"Content-Type":T[path.extname(f)]||"application/octet-stream"});fs.createReadStream(f).pipe(r);});
+srv.listen(0,"127.0.0.1",async()=>{
+  const base=`http://127.0.0.1:${srv.address().port}/`;
+  const b=await chromium.launch();
+  const ctx=await b.newContext({...devices["iPhone 13"]});
+  const p=await ctx.newPage();
+  await p.goto(base);
+  const now=new Date().toISOString();
+  const col={};
+  for(const s of ["75192-1","76269-1","10294-1","76419-1","42143-1","21265-1","60380-1","41748-1","71799-1","75313-1"]) col[s]={s:"built",u:now};
+  for(const s of ["43222-1","10326-1"]) col[s]={s:"owned",u:now};
+  await p.evaluate((c)=>{localStorage.setItem("lego-collezione-v1",JSON.stringify(c));localStorage.setItem("lego-collezione-vista","cat");},col);
+  const shot=async(hash,name,scroll=0)=>{await p.goto(base+hash);await p.waitForTimeout(2500);if(scroll){await p.evaluate((y)=>window.scrollTo(0,y),scroll);await p.waitForTimeout(1500);}await p.waitForLoadState("networkidle").catch(()=>{});await p.waitForTimeout(2500);await p.screenshot({path:`campione/${name}.png`});};
+  await shot("#/temi","temi-1");
+  await shot("#/temi","temi-2",700);
+  await shot("#/temi","temi-3",1400);
+  await shot("#/catalogo","catalogo-1");
+  await shot("#/catalogo","catalogo-2",900);
+  await shot("#/collezione","collezione-1");
+  await shot("#/collezione","collezione-2",650);
+  const sw=await p.evaluate(()=>[...document.querySelectorAll("a.tile")].find(a=>/Star Wars/.test(a.textContent))?.getAttribute("href"));
+  await p.goto(base+"#/temi"); await p.waitForTimeout(1500);
+  const swh=await p.evaluate(()=>[...document.querySelectorAll("a.tile")].find(a=>/Star Wars/.test(a.textContent))?.getAttribute("href"));
+  if(swh) await shot(swh,"tema-starwars");
+  await shot("#/set/76316-1","scheda-crop");
+  await b.close(); srv.close();
+});

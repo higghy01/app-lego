@@ -42,6 +42,8 @@ jobs:
         run: |
           # Anche se Brickset si ferma (es. limite giornaliero), quanto scaricato si salva.
           python scripts/fetch_brickset.py --max-calls "${{ inputs.max_calls || 60 }}" --max-images "${{ inputs.max_images || 1500 }}" || echo "::warning title=Brickset::aggiornamento incompleto, riprovo domani"
+          # Per le foto nuove: quali sono il fronte della scatola (e dove ritagliare la scatola dalle foto "scatola + set").
+          pip install --quiet pillow numpy scipy && python scripts/fronti_scatola.py --max 4000 || echo "::warning title=Fronte scatola::controllo foto incompleto, riprovo domani"
           if [ -n "$(git status --porcelain data-src)" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
