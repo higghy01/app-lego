@@ -1634,7 +1634,8 @@ function renderCollection() {
   ];
   const t0 = performance.now();
   let grown = null; // categorie cresciute dall'ultima volta (calcolate la prima volta che si vedono)
-  const draw = () => {
+  const draw = (quiet = false) => {
+    keepBars(quiet);
     const byCat = state.collectionMode === "cat";
     const [, , filter] = chips.find((c) => c[0] === state.collectionChip) || chips[0];
     const list = byCat ? [] : collectionList(filter);
@@ -1685,9 +1686,9 @@ function renderCollection() {
   };
   draw();
   // Le foto si contano in un secondo momento: quando arrivano si aggiornano numeri e 📷.
-  loadPhotoCounts().then(() => { if (location.hash === "#/collezione") draw(); });
+  loadPhotoCounts().then(() => { if (location.hash === "#/collezione") draw(true); });
   // Foto delle scatole ed etichette Nuovo/In arrivo arrivano da Brickset: appena ci sono si ridisegna (senza animazione).
-  if (!state.extra) loadExtra().then(() => { if (location.hash === "#/collezione") { calmView(); draw(); } }).catch(() => {});
+  if (!state.extra) loadExtra().then(() => { if (location.hash === "#/collezione") { calmView(); draw(true); } }).catch(() => {});
 }
 
 // ---------- Collezione per categoria ----------
@@ -1734,13 +1735,24 @@ function myCategories() {
     }
     if (BUILT.includes(e.s)) {
       c.built++;
-      // Copertina: l'ultimo set che ha costruito in questa categoria.
-      if (!c.last || (e.u || "") > (entry(c.last.setNum).u || "")) c.last = s;
+      // Copertina: l'ultimo set che ha costruito in questa categoria (con la data di costruzione se l'ha scritta;
+      // altrimenti l'ultima modifica, così un voto o una nota su un set vecchio non cambia la copertina se c'è la data).
+      if (!c.last || builtKey(e) > builtKey(entry(c.last.setNum))) c.last = s;
     }
   }
   return [...cats.values()].filter((c) => c.built)
     .sort((a, b) => b.built - a.built || state.catalog.collator.compare(a.theme.name, b.theme.name));
 }
+
+// Ridisegno arrivato da solo (foto contate, dati Brickset arrivati dopo): le barre che si riempiono e il "+1"
+// continuano da dove erano invece di ripartire da zero (le animazioni partono "indietro" del tempo già passato).
+let barsStart = 0;
+function keepBars(quiet) {
+  if (!quiet) barsStart = performance.now();
+  $("#view").style.setProperty("--bars-skip", quiet ? `${-Math.round(performance.now() - barsStart)}ms` : "0ms");
+}
+
+const builtKey = (e) => (e.d || (e.u || "").slice(0, 10)) + (e.u || "");
 
 // Barra di avanzamento a mattoncini: quanti dei suoi set di questa categoria ha già costruito.
 function progressBar(built, owned) {
@@ -1833,7 +1845,8 @@ function renderCollectionCategory(id) {
   const v = state.catView?.id === id ? state.catView : (state.catView = { id, sub: "" });
   const subs = [...c.subs.values()].sort((a, b) => a.name.localeCompare(b.name, "it"));
   if (v.sub && !c.subs.has(Number(v.sub))) v.sub = "";
-  const draw = () => {
+  const draw = (quiet = false) => {
+    keepBars(quiet);
     const rank = (s) => (BUILT.includes(entry(s.setNum).s) ? 0 : entry(s.setNum).s === "building" ? 1 : 2);
     const list = c.sets.filter((s) => !v.sub || s.chain[1] === Number(v.sub))
       .sort((a, b) => rank(a) - rank(b) || (entry(b.setNum).u || "").localeCompare(entry(a.setNum).u || ""));
@@ -1855,8 +1868,8 @@ function renderCollectionCategory(id) {
     });
   };
   draw();
-  if (!state.extra) loadExtra().then(() => { if (currentRoute === `#/collezione/${id}`) { calmView(); draw(); } }).catch(() => {});
-  loadPhotoCounts().then(() => { if (currentRoute === `#/collezione/${id}`) { calmView(); draw(); } });
+  if (!state.extra) loadExtra().then(() => { if (currentRoute === `#/collezione/${id}`) { calmView(); draw(true); } }).catch(() => {});
+  loadPhotoCounts().then(() => { if (currentRoute === `#/collezione/${id}`) { calmView(); draw(true); } });
 }
 
 // Promemoria del backup: solo se ci sono set salvati, modifiche più recenti dell'ultimo backup
