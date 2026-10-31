@@ -1776,11 +1776,16 @@ function catTile(c, head = false) {
 }
 
 function categoriesHtml(cats) {
+  // Set posseduti che non stanno in nessuna categoria mostrata (categorie dove non ha ancora costruito niente).
+  const shown = cats.reduce((a, c) => a + c.sets.length, 0);
+  const owned = Object.entries(state.collection).filter(([n, e]) => OWNED.includes(e.s) && state.catalog.bySetNum.get(n)?.root != null).length;
+  const rest = owned - shown;
+  const restText = rest > 0 ? ` ${rest === 1 ? "Un altro set da costruire è" : `Altri ${fmtNum(rest)} set da costruire sono`} in "Tutti i set".` : "";
   if (!cats.length) {
-    return `<div class="empty"><b>Ancora nessuna categoria</b>Quando segni un set come "Costruito", qui compare la sua categoria (per esempio Super Heroes DC con Batman) con i set che hai costruito.</div>`;
+    return `<div class="empty"><b>Ancora nessuna categoria</b>Quando segni un set come "Costruito", qui compare la sua categoria (per esempio Super Heroes DC con Batman) con i set che hai costruito.${restText}</div>`;
   }
   const apart = cats.some((c) => c.sets.some((s) => entry(s.setNum).s === "apart"));
-  return `<p class="muted small">${cats.length === 1 ? "1 categoria" : `${cats.length} categorie`} con set costruiti da te. Tocca una categoria per vedere i suoi set.${apart ? " Tra i costruiti contano anche i set smontati." : ""}</p>
+  return `<p class="muted small">${cats.length === 1 ? "1 categoria" : `${cats.length} categorie`} con set costruiti da te. Tocca una categoria per vedere i suoi set.${apart ? " Tra i costruiti contano anche i set smontati." : ""}${restText}</p>
     <div class="cat-list">${cats.map((c) => catTile(c)).join("")}</div>`;
 }
 
