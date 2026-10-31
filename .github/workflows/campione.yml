@@ -2,7 +2,7 @@ name: Verifica fronte scatola (temporaneo)
 on:
   push:
     branches: [claude/project-thread-3mfs1r]
-    paths: [campione/verifica.js, campione/fogli.py, campione/giro2.py]
+    paths: [campione/verifica.js, campione/fogli.py, campione/giro2.py, campione/giro3.py]
 permissions:
   contents: write
 jobs:
@@ -14,7 +14,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: mkdir -p _site && cp -r app/. _site/ && python scripts/build_catalog.py _site/data
-      - run: pip install pillow && python campione/giro2.py
+      - run: pip install pillow && pip install numpy scipy && python campione/giro3.py
       - if: always()
         run: |
           git config user.name "github-actions[bot]"
