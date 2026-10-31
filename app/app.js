@@ -17,6 +17,8 @@ const STORE_KEY = "lego-collezione-v1";
 const BACKUP_KEY = "lego-ultimo-backup";
 const PREV_KEY = "lego-collezione-prima-import";
 const BACKUP_SNOOZE_KEY = "lego-backup-rimanda";
+const MODE_KEY = "lego-collezione-vista"; // "cat" = per categoria (di partenza), "list" = tutti i set
+const CAT_SEEN_KEY = "lego-categorie-viste"; // quanti set costruiti c'erano per categoria l'ultima volta (per la festa)
 const BACKUP_DAYS = 30; // dopo tanti giorni senza backup, con modifiche nuove, in Collezione compare un promemoria
 const NA = '<span class="na">non disponibile</span>';
 
@@ -32,6 +34,7 @@ const state = {
   shown: PAGE,
   catalogScroll: 0,
   collectionChip: "all",
+  collectionMode: (() => { try { return localStorage.getItem(MODE_KEY) === "list" ? "list" : "cat"; } catch { return "cat"; } })(),
   photoCounts: {},      // numero di foto per set (le foto sono in IndexedDB)
 };
 
@@ -1630,18 +1633,37 @@ function renderCollection() {
     ["photo", "Con foto 📷", (e, num) => state.photoCounts[num]],
   ];
   const t0 = performance.now();
+  let grown = null; // categorie cresciute dall'ultima volta (calcolate la prima volta che si vedono)
   const draw = () => {
+    const byCat = state.collectionMode === "cat";
     const [, , filter] = chips.find((c) => c[0] === state.collectionChip) || chips[0];
-    const list = collectionList(filter);
+    const list = byCat ? [] : collectionList(filter);
+    const cats = byCat ? myCategories() : null;
     const y = window.scrollY;
     $("#view").innerHTML = `${isIosBrowser() ? SAFARI_WARNING : ""}
       ${backupReminder()}
       ${statsCard()}
-      <div class="chips scroll">${chips.map(([id, label, fn]) =>
+      ${viewSwitch()}
+      ${byCat ? categoriesHtml(cats) : `<div class="chips scroll">${chips.map(([id, label, fn]) =>
         `<button class="chip ${id === state.collectionChip ? "on" : ""}" data-chip="${id}">${esc(label)} (${collectionList(fn).length})</button>`).join("")}</div>
       ${list.length ? `<ul class="list blocks">${list.map(setItem).join("")}</ul>` :
-        `<div class="empty"><b>Ancora niente qui</b>Cerca un set nel <a href="#/catalogo">Catalogo</a>, aprilo e scegli il suo stato (per esempio "Costruito").</div>`}`;
+        `<div class="empty"><b>Ancora niente qui</b>Cerca un set nel <a href="#/catalogo">Catalogo</a>, aprilo e scegli il suo stato (per esempio "Costruito").</div>`}`}`;
     layoutAll(y);
+    $(".view-switch").addEventListener("click", (ev) => {
+      const b = ev.target.closest("[data-mode]");
+      if (!b || b.dataset.mode === state.collectionMode) return;
+      state.collectionMode = b.dataset.mode;
+      try { localStorage.setItem(MODE_KEY, state.collectionMode); } catch {}
+      draw();
+      $("[data-mode].on")?.classList.add("snap");
+      animateView("relist");
+    });
+    if (byCat) {
+      // Le categorie cresciute si calcolano una volta sola: i ridisegni (foto contate, dati arrivati) tengono il "+1" senza rifare la festa.
+      const party = grown == null;
+      grown ??= grownCategories(cats);
+      markGrown(grown, party);
+    }
     $("#backup-later")?.addEventListener("click", () => {
       try { localStorage.setItem(BACKUP_SNOOZE_KEY, new Date().toISOString()); } catch {}
       $("#backup-reminder").remove();
@@ -1649,8 +1671,8 @@ function renderCollection() {
     $(".more-stats").addEventListener("toggle", (ev) => { state.statsOpen = ev.target.open; });
     // La fila dei filtri scorre di lato: resta visibile quello scelto.
     const chipRow = $(".chips.scroll");
-    chipRow.scrollLeft = state.chipScroll || 0;
-    chipRow.addEventListener("scroll", () => { state.chipScroll = chipRow.scrollLeft; }, { passive: true });
+    if (chipRow) chipRow.scrollLeft = state.chipScroll || 0;
+    chipRow?.addEventListener("scroll", () => { state.chipScroll = chipRow.scrollLeft; }, { passive: true });
     document.querySelectorAll("[data-chip]").forEach((b) => b.addEventListener("click", () => {
       if (state.collectionChip === b.dataset.chip) return;
       state.collectionChip = b.dataset.chip;
@@ -1666,6 +1688,170 @@ function renderCollection() {
   loadPhotoCounts().then(() => { if (location.hash === "#/collezione") draw(); });
   // Foto delle scatole ed etichette Nuovo/In arrivo arrivano da Brickset: appena ci sono si ridisegna (senza animazione).
   if (!state.extra) loadExtra().then(() => { if (location.hash === "#/collezione") { calmView(); draw(); } }).catch(() => {});
+}
+
+// ---------- Collezione per categoria ----------
+// Una categoria è un tema principale (es. Super Heroes DC); dentro si vedono i sottotemi (es. Batman).
+// Compaiono solo le categorie dove lei ha già costruito almeno un set: mai categorie vuote.
+// "Costruiti" = Costruito o Smontato (un set smontato l'ha comunque costruito).
+const BUILT = ["built", "apart"];
+const CAT_OTHER = 0; // set non più nel catalogo o senza tema
+
+function viewSwitch() {
+  const b = (mode, label) => `<button type="button" class="chip ${state.collectionMode === mode ? "on" : ""}" data-mode="${mode}" aria-pressed="${state.collectionMode === mode}">${label}</button>`;
+  return `<div class="chips view-switch" role="group" aria-label="Come vedere la collezione">${b("list", "Tutti i set")}${b("cat", "Per categoria")}</div>`;
+}
+
+// Numero di set "veri" (con pezzi o personaggi) per tema, compresi i sottotemi: calcolato una volta sola.
+let themeCountCache = null;
+function catalogCount(themeId) {
+  if (!themeCountCache) {
+    themeCountCache = new Map();
+    for (const s of state.catalog.sets) {
+      if (!isRealSet(s)) continue;
+      for (const id of s.chain) themeCountCache.set(id, (themeCountCache.get(id) || 0) + 1);
+    }
+  }
+  return themeCountCache.get(themeId) || 0;
+}
+
+// Le categorie della collezione: per ognuna i suoi set posseduti, quanti costruiti e i sottotemi.
+function myCategories() {
+  const cats = new Map();
+  for (const [num, e] of Object.entries(state.collection)) {
+    if (!OWNED.includes(e.s)) continue;
+    const s = state.catalog.bySetNum.get(num);
+    if (!s || s.root == null) continue;
+    const c = cats.get(s.root) || { id: s.root, theme: state.catalog.themes[s.root], sets: [], built: 0, subs: new Map(), last: null };
+    cats.set(s.root, c);
+    c.sets.push(s);
+    const sub = s.chain[1];
+    if (sub != null) {
+      const x = c.subs.get(sub) || { id: sub, name: state.catalog.themes[sub].name, owned: 0, built: 0 };
+      c.subs.set(sub, x);
+      x.owned++;
+      if (BUILT.includes(e.s)) x.built++;
+    }
+    if (BUILT.includes(e.s)) {
+      c.built++;
+      // Copertina: l'ultimo set che ha costruito in questa categoria.
+      if (!c.last || (e.u || "") > (entry(c.last.setNum).u || "")) c.last = s;
+    }
+  }
+  return [...cats.values()].filter((c) => c.built)
+    .sort((a, b) => b.built - a.built || state.catalog.collator.compare(a.theme.name, b.theme.name));
+}
+
+// Barra di avanzamento a mattoncini: quanti dei suoi set di questa categoria ha già costruito.
+function progressBar(built, owned) {
+  const pct = Math.round((built / owned) * 100);
+  const done = built === owned;
+  return `<span class="cat-bar${done ? " done" : ""}" role="img" aria-label="Costruiti ${built} su ${owned}"><span style="width:${pct}%"></span></span>`;
+}
+
+function catText(c) {
+  const owned = c.sets.length;
+  return c.built === owned
+    ? `<span class="cat-done">${owned === 1 ? "Costruito!" : `Tutti costruiti! ${fmtNum(owned)} su ${fmtNum(owned)}`}</span>`
+    : `Costruiti <b>${fmtNum(c.built)}</b> su ${fmtNum(owned)} che hai`;
+}
+
+function catTile(c, head = false) {
+  const color = themeColor(c.theme.name);
+  const img = c.last ? listImg(c.last, "tile-img") : '<div class="tile-img"></div>';
+  // Sottotemi in cui ha costruito qualcosa (es. Batman): così la categoria si riconosce subito.
+  const subs = [...c.subs.values()].filter((x) => x.built).sort((a, b) => b.built - a.built || a.name.localeCompare(b.name, "it"));
+  const subsText = subs.length ? `<span class="cat-subs">${subs.slice(0, 3).map((x) => esc(x.name)).join(" · ")}${subs.length > 3 ? ` · +${subs.length - 3}` : ""}</span>` : "";
+  const total = catalogCount(c.id);
+  const inner = `<span class="tile-cover cat-pic">${img}<span class="cat-count" aria-hidden="true">${fmtNum(c.built)}</span></span>
+    <span class="theme-head-info">
+      <span class="tile-name">${esc(c.theme.name)}</span>${subsText}
+      ${progressBar(c.built, c.sets.length)}
+      <span class="cat-text">${catText(c)}</span>
+      ${total ? `<span class="tile-count">Nel catalogo LEGO: ${total === 1 ? "1 set" : `${fmtNum(total)} set`}</span>` : ""}
+    </span>`;
+  return head
+    ? `<div class="tile theme-head cat-tile" style="--tc:${color}">${inner}</div>`
+    : `<a class="tile theme-head cat-tile" data-cat="${c.id}" href="#/collezione/${c.id}" style="--tc:${color}">${inner}</a>`;
+}
+
+function categoriesHtml(cats) {
+  if (!cats.length) {
+    return `<div class="empty"><b>Ancora nessuna categoria</b>Quando segni un set come "Costruito", qui compare la sua categoria (per esempio Super Heroes DC con Batman) con i set che hai costruito.</div>`;
+  }
+  const apart = cats.some((c) => c.sets.some((s) => entry(s.setNum).s === "apart"));
+  return `<p class="muted small">${cats.length === 1 ? "1 categoria" : `${cats.length} categorie`} con set costruiti da te. Tocca una categoria per vedere i suoi set.${apart ? " Tra i costruiti contano anche i set smontati." : ""}</p>
+    <div class="cat-list">${cats.map((c) => catTile(c)).join("")}</div>`;
+}
+
+// Piccola festa quando una categoria è cresciuta dall'ultima volta: "+1" e stelline;
+// se ora ha costruito tutti i suoi set di quella categoria, cadono anche i mattoncini.
+function grownCategories(cats) {
+  let seen = null;
+  try { seen = JSON.parse(localStorage.getItem(CAT_SEEN_KEY) || "null"); } catch {}
+  const next = {};
+  for (const c of cats) next[c.id] = [c.built, c.sets.length];
+  try { localStorage.setItem(CAT_SEEN_KEY, JSON.stringify(next)); } catch {}
+  const grown = [];
+  if (!seen || typeof seen !== "object") return grown; // la prima volta niente festa: tutte le categorie sarebbero "nuove"
+  for (const c of cats) {
+    const [was = 0, wasOwned = 0] = Array.isArray(seen[c.id]) ? seen[c.id] : [];
+    if (c.built <= was) continue;
+    grown.push({ id: c.id, plus: c.built - was, complete: c.built === c.sets.length && !(wasOwned && was === wasOwned) });
+  }
+  return grown;
+}
+
+function markGrown(grown, party) {
+  let delay = 450;
+  for (const g of grown) {
+    const tile = document.querySelector(`.cat-tile[data-cat="${g.id}"]`);
+    if (!tile) continue;
+    tile.classList.add("grew");
+    tile.querySelector(".cat-text").insertAdjacentHTML("beforeend", ` <span class="cat-plus">+${g.plus}</span>`);
+    if (party) { setTimeout(() => burst(tile.querySelector(".cat-bar"), "stars"), delay); delay += 250; }
+  }
+  if (party && grown.some((g) => g.complete)) setTimeout(celebrate, 300);
+}
+
+// Una categoria della collezione: la sua casella in cima e i suoi set, prima quelli costruiti.
+function renderCollectionCategory(id) {
+  const c = myCategories().find((x) => x.id === id);
+  const t = state.catalog.themes[id];
+  if (!t) { location.hash = "#/collezione"; return; }
+  setHeader(t.name, "#/collezione");
+  setTab("collezione");
+  if (!c) {
+    $("#view").innerHTML = `<div class="empty"><b>Nessun set costruito qui</b>In questa categoria non hai ancora costruito nessun set. <a href="#/collezione">Torna alla collezione</a></div>`;
+    return;
+  }
+  const v = state.catView?.id === id ? state.catView : (state.catView = { id, sub: "" });
+  const subs = [...c.subs.values()].sort((a, b) => a.name.localeCompare(b.name, "it"));
+  if (v.sub && !c.subs.has(Number(v.sub))) v.sub = "";
+  const draw = () => {
+    const rank = (s) => (BUILT.includes(entry(s.setNum).s) ? 0 : entry(s.setNum).s === "building" ? 1 : 2);
+    const list = c.sets.filter((s) => !v.sub || s.chain[1] === Number(v.sub))
+      .sort((a, b) => rank(a) - rank(b) || (entry(b.setNum).u || "").localeCompare(entry(a.setNum).u || ""));
+    const chip = (sub, label) => `<button type="button" class="chip ${v.sub === sub ? "on" : ""}" data-sub="${sub}">${label}</button>`;
+    const y = window.scrollY;
+    $("#view").innerHTML = `${catTile(c, true)}
+      ${subs.length > 1 || (subs.length === 1 && subs[0].owned < c.sets.length)
+        ? `<div class="chips scroll">${chip("", `Tutti (${c.sets.length})`)}${subs.map((x) => chip(String(x.id), `${esc(x.name)} ${x.built}/${x.owned}`)).join("")}</div>` : ""}
+      <ul class="list blocks">${list.map(setItem).join("")}</ul>
+      <a class="btn full" href="#/tema/${id}">Vedi tutti i set ${esc(t.name)} del catalogo</a>`;
+    layoutAll(y);
+    $("#view .chips.scroll")?.addEventListener("click", (ev) => {
+      const b = ev.target.closest("[data-sub]");
+      if (!b || b.dataset.sub === v.sub) return;
+      v.sub = b.dataset.sub;
+      draw();
+      $("[data-sub].on")?.classList.add("snap");
+      animateView("relist");
+    });
+  };
+  draw();
+  if (!state.extra) loadExtra().then(() => { if (currentRoute === `#/collezione/${id}`) { calmView(); draw(); } }).catch(() => {});
+  loadPhotoCounts().then(() => { if (currentRoute === `#/collezione/${id}`) { calmView(); draw(); } });
 }
 
 // Promemoria del backup: solo se ci sono set salvati, modifiche più recenti dell'ultimo backup
@@ -1969,11 +2155,14 @@ function route() {
   if (currentRoute.startsWith("#/catalogo")) state.catalogScroll = window.scrollY;
   if (currentRoute === "#/temi" || currentRoute === "") state.themesScroll = window.scrollY;
   if (currentRoute.startsWith("#/tema/") && state.themeView) state.themeView.scroll = window.scrollY;
+  if (currentRoute === "#/collezione") state.collectionScroll = window.scrollY;
+  const backFromCat = currentRoute.startsWith("#/collezione/") && hash === "#/collezione";
   state.cameFromApp = currentRoute !== "";
   currentRoute = hash;
   animateView();
   const [, page, arg] = hash.split("/");
   if (page === "set" && arg) renderDetail(decodeURIComponent(arg));
+  else if (page === "collezione" && arg) renderCollectionCategory(Number(arg));
   else if (page === "collezione") renderCollection();
   else if (page === "desideri") renderWishlist();
   else if (page === "backup") renderBackup();
@@ -1981,7 +2170,9 @@ function route() {
   else if (page === "tema" && arg) renderTheme(Number(arg));
   else if (page === "catalogo") renderCatalog();
   else renderThemes();
-  if (!["catalogo", "temi", "tema", undefined, ""].includes(page)) window.scrollTo(0, 0);
+  // Tornando da una categoria, la collezione resta dov'era.
+  if (backFromCat) window.scrollTo(0, state.collectionScroll || 0);
+  else if (!["catalogo", "temi", "tema", undefined, ""].includes(page)) window.scrollTo(0, 0);
 }
 
 function setupInstallHint() {
