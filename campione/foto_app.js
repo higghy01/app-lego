@@ -15,8 +15,10 @@ srv.listen(0,"127.0.0.1",async()=>{
   for(const s of ["75192-1","76269-1","10294-1","76419-1","42143-1","21265-1","60380-1","41748-1","71799-1","75313-1"]) col[s]={s:"built",u:now};
   for(const s of ["43222-1","10326-1"]) col[s]={s:"owned",u:now};
   await p.evaluate((c)=>{localStorage.setItem("lego-collezione-v1",JSON.stringify(c));localStorage.setItem("lego-collezione-vista","cat");},col);
+  await p.reload(); await p.waitForTimeout(1500);
   const shot=async(hash,name,scroll=0)=>{await p.goto(base+hash);await p.waitForTimeout(2500);if(scroll){await p.evaluate((y)=>window.scrollTo(0,y),scroll);await p.waitForTimeout(1500);}await p.waitForLoadState("networkidle").catch(()=>{});await p.waitForTimeout(2500);await p.screenshot({path:`campione/${name}.png`});};
   await shot("#/temi","temi-1");
+  await shot("#/temi","temi-4",2600);
   await shot("#/temi","temi-2",700);
   await shot("#/temi","temi-3",1400);
   await shot("#/catalogo","catalogo-1");

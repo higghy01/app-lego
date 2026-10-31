@@ -465,11 +465,12 @@ div.tile-img { background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www
 /* Copertina con i personaggi simbolo della categoria, uno accanto all'altro (si stringono se sono 4) */
 .figs-cover { position: relative; }
 .figs-row {
-  display: flex; align-items: flex-end; justify-content: center; width: 100%; aspect-ratio: 4 / 3;
-  padding: 8px 6px 4px; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 4 / 3;
+  padding: 4px; overflow: hidden;
 }
-.figs-row .fig { flex: 1 1 0; min-width: 0; max-width: 34%; height: 100%; object-fit: contain; object-position: bottom; mix-blend-mode: multiply; }
-.figs-row .fig + .fig { margin-left: -4%; } /* un po' vicini, come in una foto di gruppo */
+/* La foto di una minifigure è quadrata con tanto bianco ai lati: ogni personaggio ha una "fetta" stretta e alta
+   e la foto si ingrandisce a riempirla (si taglia solo il bianco ai lati). */
+.figs-row .fig { flex: 1 1 0; min-width: 0; max-width: 34%; height: 82%; object-fit: cover; mix-blend-mode: multiply; }
 /* Solo la scatola da una foto "scatola + set montato" (disegno SVG che mostra un pezzo della foto) */
 svg.crop-img { display: block; }
 .tile::before { content: ""; display: block; height: 6px; margin: -2px 6px 6px; border-radius: 3px; background: var(--tc); }
