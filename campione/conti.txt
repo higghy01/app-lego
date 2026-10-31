@@ -1,6 +1,3 @@
-alt1-si 4573
-alt1-no 2165
-num-si 333
-num-no 728
-crop 421
-crop-no 679
+crop 814
+crop-no 287
+alt1 si 5805 no 1993
