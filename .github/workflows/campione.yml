@@ -2,7 +2,7 @@ name: Campione foto (temporaneo)
 on:
   push:
     branches: [claude/project-thread-hwk6ng]
-    paths: [campione/lista.json]
+    paths: [campione/lista2.json]
 permissions:
   contents: write
 jobs:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: pip install pillow && python campione/montaggio.py campione/lista.json
+      - run: pip install pillow && python campione/griglia.py campione/lista2.json
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
