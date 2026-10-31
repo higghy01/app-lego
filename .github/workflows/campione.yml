@@ -2,7 +2,7 @@ name: Verifica foto (temporaneo)
 on:
   push:
     branches: [claude/project-thread-3qjckp]
-    paths: [campione/foto_app.js]
+    paths: [campione/figs.json]
 permissions:
   contents: write
 jobs:
@@ -20,7 +20,7 @@ jobs:
       - run: |
           npm install --no-save --no-audit --no-fund playwright@1.63.0
           npx playwright install --with-deps chromium
-          node campione/foto_app.js
+          true
           pip install pillow && python campione/figs_sheet.py
       - run: |
           git config user.name "github-actions[bot]"
