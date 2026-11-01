@@ -1,0 +1,22 @@
+name: Verifica fronti scelti (temporanea)
+on:
+  push:
+    branches: [claude/project-thread-7e6re6]
+    paths: [verifica/*.py, verifica/lista.json, .github/workflows/verifica.yml]
+permissions:
+  contents: write
+jobs:
+  verifica:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          pip install --quiet pillow
+          python verifica/fogli.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add verifica/out
+          git commit -m "verifica: fogli" && git push
