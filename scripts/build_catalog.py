@@ -340,7 +340,10 @@ def build(out_dir, src=None):
     checked = json.loads(BRICKSET_FRONTS.read_text(encoding="utf-8"))["imgs"] if BRICKSET_FRONTS.exists() else {}
     n_front = [0, 0]
     # Fronte scelto a occhio: vince sulle regole del nome (foto con nomi a caso, dove una su quattro e' il retro).
-    chosen = json.loads(CHOSEN_FRONTS.read_text(encoding="utf-8"))["sets"] if CHOSEN_FRONTS.exists() else {}
+    chosen_file = json.loads(CHOSEN_FRONTS.read_text(encoding="utf-8")) if CHOSEN_FRONTS.exists() else {}
+    chosen = chosen_file.get("sets", {})
+    # 1/11 sera: per le foto "scatola + set" scelte a mano che il programma non sapeva ritagliare, il ritaglio misurato a occhio
+    chosen_crops = chosen_file.get("crops", {})
     chosen_main = set()
     if BRICKSET_PHOTOS.exists():
         for set_num, info in json.loads(BRICKSET_PHOTOS.read_text(encoding="utf-8"))["sets"].items():
@@ -350,11 +353,14 @@ def build(out_dir, src=None):
             # la scatola sempre per prima, senza doppioni
             imgs = unique_photos(sorted(info["imgs"], key=lambda i: photo_order(i, alt1_box)))
             pick = chosen.get(set_num)
-            if pick and pick.startswith("images/"):
+            if pick == "-":
+                front = None  # guardate a occhio: nessuna foto e' il fronte (es. alt1 col set montato), meglio niente che il modello
+            elif pick and pick.startswith("images/"):
                 chosen_main.add(set_num)  # la foto principale di Brickset e' il fronte: "box": 1 qui sotto
                 front = None
             else:
-                front = next(((i, None) for i in imgs if i[0] == pick), None) or pick_front(imgs, years.get(set_num), checked)
+                front = next(((i, chosen_crops.get(set_num) or (checked.get(i[0]) or {}).get("crop")) for i in imgs if i[0] == pick),
+                             None) or pick_front(imgs, years.get(set_num), checked)
             if front:
                 # il fronte della scatola per primo anche nella galleria, poi le altre foto
                 imgs = [front[0]] + [i for i in imgs if i is not front[0]]
@@ -407,6 +413,12 @@ def build(out_dir, src=None):
     if os.environ.get("GITHUB_ACTIONS"):
         sample = {s[0]: s[1:] for s in sets if s[0] in ("10294-1", "75192-1")}
         print(f"::notice title=Catalogo::{summary}. Esempi: {json.dumps(sample, ensure_ascii=False)}")
+        # 1/11 (Sagrada Familia): set recenti con foto in piu' ma senza fronte della scatola riconosciuto. Vanno guardati
+        # a occhio e aggiunti a brickset-fronti-scelti.json (le foto col nome a caso, tipo 21065_15430, non si riconoscono).
+        recent = sorted(k for k, v in extra.items() if "box" not in v and (years.get(k) or 0) >= max((y or 0 for y in years.values()), default=0) - 1
+                        and k in has_photos and re.fullmatch(r"\d{4,5}-1", k))
+        if recent:
+            print(f"::warning title=Senza scatola::{len(recent)} set recenti con foto ma senza fronte della scatola: {' '.join(recent[:60])}")
 
 
 if __name__ == "__main__":
