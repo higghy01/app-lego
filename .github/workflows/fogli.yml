@@ -1,0 +1,29 @@
+name: Fogli foto (temporaneo)
+on:
+  push:
+    branches: [claude/project-thread-2wvc00]
+    paths: [tmp-fogli/cfg.json, tmp-fogli/fogli.py, tmp-fogli/*.js, .github/workflows/fogli.yml]
+permissions:
+  contents: write
+jobs:
+  fogli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install pillow
+      - run: mkdir -p _site && cp -r app/. _site/ && python scripts/build_catalog.py _site/data
+      - run: python tmp-fogli/fogli.py
+      - uses: actions/setup-node@v4
+        with: {node-version: "22"}
+      - run: |
+          npm install --no-save --no-audit --no-fund playwright@1.63.0
+          npx playwright install --with-deps chromium
+          OUT=$(python -c "import json;print(json.load(open('tmp-fogli/cfg.json'))['out'])")
+          node tmp-fogli/sito.js $OUT || true
+          [ -f tmp-fogli/prova.js ] && node tmp-fogli/prova.js _site $OUT || true
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add tmp-fogli/out* && git commit -m "fogli" && git pull --rebase && git push
