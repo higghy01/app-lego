@@ -304,12 +304,36 @@ function watchDataUpdates() {
     try {
       const raw = await (await fetch("data/extra.json", { cache: "no-cache" })).json();
       if (!raw.generated || raw.generated === state.extra.generated) return;
-      // non mentre si guarda una foto grande o si usa la fotocamera; le note scritte si salvano prima
-      if (document.hidden || document.querySelector(".viewer") || location.hash === "#/scansiona") return;
-      flushPending();
-      location.reload();
+      reloadWanted = true;
+      reloadWhenFree();
     } catch {}
   });
+}
+
+// Ricarica per dati o versione nuovi, ma mai mentre si guarda una foto grande, si usa la fotocamera o si scrive
+// (es. nella ricerca): in quel caso si aspetta il prossimo cambio di pagina o il ritorno all'app.
+// Le note scritte si salvano prima.
+let reloadWanted = false;
+function reloadWhenFree() {
+  if (!reloadWanted) return;
+  const busy = document.querySelector(".viewer") || location.hash === "#/scansiona" || document.activeElement?.matches("input, textarea");
+  if (busy && !document.hidden) return;
+  reloadWanted = false;
+  flushPending();
+  location.reload();
+}
+
+// Versione nuova dell'app: il service worker (sw.js, "activate") lo dice alla pagina, che risponde "ci penso io"
+// e si ricarica appena è libera. Le pagine di versioni vecchie non rispondono: quelle le ricarica il service worker.
+function watchAppUpdates() {
+  if (!("serviceWorker" in navigator)) return;
+  navigator.serviceWorker.addEventListener("message", (e) => {
+    if (e.data?.type !== "nuova-versione") return;
+    e.ports[0]?.postMessage("ci penso io");
+    reloadWanted = true;
+    reloadWhenFree();
+  });
+  document.addEventListener("visibilitychange", reloadWhenFree);
 }
 
 // Codici a barre → set: preparati solo la prima volta che si scansiona.
@@ -700,19 +724,37 @@ function listImg(s, cls = "thumb") {
 // Solo la scatola da una foto "scatola + set montato": un disegno SVG che mostra solo quel rettangolo
 // (la foto è sempre quella vera di Brickset, ritagliata). crop = [x, y, larghezza, altezza, rapporto] in frazioni.
 function cropImg(src, crop, cls, s) {
-  return `<svg class="${cls} crop-img" ${cropSvgInner(src, crop, "cropFallback(this)", `role="img" aria-label="" data-set="${esc(s.setNum)}"`)}</svg>`;
+  return `<svg class="${cls} crop-img" ${cropSvgInner(src, crop, "cropFallback(this)", `role="img" aria-label="" data-set="${esc(s.setNum)}"`, true)}</svg>`;
 }
+
+// Negli elenchi la scatola ritagliata viene dalla foto intera (la miniatura di Brickset è troppo piccola per il
+// ritaglio), e un <image> dentro un SVG non ha loading="lazy": la foto si chiede solo quando il riquadro sta per
+// entrare nello schermo, come le altre miniature. Vale per qualsiasi elenco, comunque sia stato disegnato.
+const cropObserver = new IntersectionObserver((entries) => {
+  for (const e of entries) {
+    if (!e.isIntersecting) continue;
+    const image = e.target.querySelector("image[data-href]");
+    if (image) image.setAttribute("href", image.dataset.href);
+    cropObserver.unobserve(e.target);
+  }
+}, { rootMargin: "300px 0px" });
+new MutationObserver(() => {
+  for (const svg of document.querySelectorAll("svg.crop-img:not([data-guardata])")) {
+    svg.setAttribute("data-guardata", "");
+    cropObserver.observe(svg);
+  }
+}).observe(document.documentElement, { childList: true, subtree: true });
 
 // Il ritaglio della scatola dentro la foto "scatola + set montato". Il riquadro in cui sta la foto non ha
 // sempre la forma della scatola: senza il clipPath ai lati si vedrebbe un pezzo del set montato accanto.
 let cropId = 0;
-function cropSvgInner(src, [x, y, w, h, ratio], onerror, attrs) {
+function cropSvgInner(src, [x, y, w, h, ratio], onerror, attrs, lazy = false) {
   const W = 1000, H = Math.round(1000 * w / (h * ratio)); // proporzioni della foto intera
   const r = [x * W, y * H, w * W, h * H].map((v) => Math.round(v * 100) / 100); // niente arrotondamento: sennò ai bordi una riga del set
   const id = "crop" + ++cropId;
   return `viewBox="${r.join(" ")}" preserveAspectRatio="xMidYMid meet" ${attrs}>`
     + `<clipPath id="${id}"><rect x="${r[0]}" y="${r[1]}" width="${r[2]}" height="${r[3]}"/></clipPath>`
-    + `<image href="${esc(src)}" width="${W}" height="${H}" preserveAspectRatio="none" clip-path="url(#${id})" onerror="${onerror}"/>`;
+    + `<image ${lazy ? "data-href" : "href"}="${esc(src)}" width="${W}" height="${H}" preserveAspectRatio="none" clip-path="url(#${id})" onerror="${onerror}"/>`;
 }
 
 // La foto della scatola non si carica (es. senza internet): si prova la foto di Rebrickable, come gli altri set.
@@ -2347,6 +2389,8 @@ function skipAnimations(withView) {
 function route() {
   flushPending();
   stopScan();
+  // Versione o dati nuovi in attesa: cambiare pagina è il momento buono per ricaricare (si riapre la pagina nuova).
+  reloadWhenFree();
   // Fuori da Scansiona la fotocamera si spegne del tutto (sull'iPhone sparisce il pallino verde);
   // resta in pausa solo dentro Scansiona, mentre si guarda un risultato, così le scansioni di fila non richiedono il permesso.
   if ((location.hash || "#/temi") !== "#/scansiona") releaseCam();
@@ -2358,7 +2402,9 @@ function route() {
   const backFromCat = currentRoute.startsWith("#/collezione/") && hash === "#/collezione";
   state.cameFromApp = currentRoute !== "";
   const [, page, arg] = hash.split("/");
-  const prev = currentRoute || "#/temi";
+  // Vuoto all'apertura dell'app: allora nella pagina c'è solo "Caricamento…", che non va messo da parte
+  // (aprendo l'app direttamente su un set, poi Temi restava su "Caricamento…").
+  const prev = currentRoute;
   currentRoute = hash;
   if (page === "set" && arg) {
     // Da un elenco a un set: l'elenco si mette da parte. Da un set a un altro set (correlati) resta da parte.
@@ -2405,6 +2451,7 @@ async function start() {
   // così anche un telefono con la versione vecchia passa subito a programma e dati nuovi.
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   watchDataUpdates();
+  watchAppUpdates();
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   try {
     await loadCatalog();

@@ -1,5 +1,5 @@
 // Fa funzionare l'app anche senza internet.
-const VERSION = "v48";
+const VERSION = "v49";
 const SHELL = "shell-" + VERSION;
 const DATA = "data";
 const IMAGES = "images";
@@ -32,11 +32,18 @@ self.addEventListener("activate", (e) => {
   // sasha 1/11: dopo un aggiornamento l'app aperta continuava con il programma e i dati di prima (per esempio la
   // scatola non ancora prima in galleria). Se c'era una versione vecchia, le pagine aperte si ricaricano una volta.
   // Solo DOPO l'attivazione: durante l'attivazione la pagina ricaricata resterebbe ferma ad aspettare.
+  // Prima si chiede alla pagina: se risponde, si ricarica da sola quando non si sta usando la fotocamera, guardando
+  // una foto grande o scrivendo (app.js, reloadWhenFree). Se non risponde (versione vecchia dell'app), la si ricarica da qui.
   done.then(() => {
     if (!hadOld) return;
     setTimeout(async () => {
       const wins = await self.clients.matchAll({ type: "window" });
-      for (const c of wins) if (c.navigate) c.navigate(c.url).catch(() => {});
+      await Promise.all(wins.map(async (c) => {
+        const ch = new MessageChannel();
+        const answered = new Promise((ok) => { ch.port1.onmessage = () => ok(true); setTimeout(() => ok(false), 1500); });
+        c.postMessage({ type: "nuova-versione" }, [ch.port2]);
+        if (!(await answered) && c.navigate) c.navigate(c.url).catch(() => {});
+      }));
     }, 0);
   });
 });

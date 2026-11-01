@@ -145,10 +145,20 @@ def is_front(why, real_set=False):
 def analyze(path, kind, back=None):
     try:
         a = load(path)
-        ratio = bbox_ratio(load(back)) if back else None
     except Exception as e:  # foto che non si scarica: si riprova la prossima volta
         return path, None, str(e)
-    return analyze_array(a, kind, path, ratio)
+    # Il retro serve solo per la misura: se non si scarica (es. tolto da Brickset) si misura sulle colonne,
+    # altrimenti la foto da ritagliare non verrebbe mai guardata.
+    ratio = None
+    if back:
+        try:
+            ratio = bbox_ratio(load(back))
+        except Exception:
+            pass
+    try:
+        return analyze_array(a, kind, path, ratio)
+    except Exception as e:  # foto strana: segnata come "non e' il fronte" (non si riprova ogni notte) e si va avanti
+        return path, {"f": 0, "v": VERSION, "err": str(e)[:80]}, None
 
 
 def shape(a):
@@ -223,14 +233,17 @@ def main():
     photos = json.loads((DATA / "brickset-foto.json").read_text(encoding="utf-8"))
     todo = candidates(photos, data["imgs"])[: args.max]
     errors = 0
-    with ThreadPoolExecutor(8) as ex:
-        for path, res, err in ex.map(lambda t: analyze(*t), todo):
-            if res is None:
-                errors += 1
-            else:
-                data["imgs"][path] = res
-    data["imgs"] = dict(sorted(data["imgs"].items()))
-    OUT.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
+    # Quello che e' gia' stato guardato si salva sempre, anche se il programma si ferma a meta'.
+    try:
+        with ThreadPoolExecutor(8) as ex:
+            for path, res, err in ex.map(lambda t: analyze(*t), todo):
+                if res is None:
+                    errors += 1
+                else:
+                    data["imgs"][path] = res
+    finally:
+        data["imgs"] = dict(sorted(data["imgs"].items()))
+        OUT.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
     n = sum(1 for v in data["imgs"].values() if v["f"])
     print(f"guardate {len(todo) - errors} foto ({errors} non scaricate); in tutto {len(data['imgs'])}, {n} col fronte della scatola")
 
