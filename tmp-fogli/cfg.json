@@ -1,1 +1,1 @@
-{"only": ["60481-1", "80113-1"], "gallery": true, "size": 300, "cols": 5, "rows": 3, "prefix": "g", "out": "tmp-fogli/out1", "years": [0, 9999]}
+{"size": 240, "cols": 6, "rows": 5, "prefix": "n", "out": "tmp-fogli/out2", "years": [2023, 2027]}

@@ -289,8 +289,27 @@ async function loadExtra() {
   const res = await fetch("data/extra.json");
   if (!res.ok) throw new Error("dati extra non trovati");
   const raw = await res.json();
-  state.extra = { sets: raw.sets || {}, imgBase: raw.imgBase, detailFiles: raw.detailFiles };
+  state.extra = { sets: raw.sets || {}, imgBase: raw.imgBase, detailFiles: raw.detailFiles, generated: raw.generated };
   return state.extra;
+}
+
+// L'iPhone tiene l'app aperta in sottofondo anche per giorni: tornando all'app dopo un po' si guarda se il catalogo
+// è stato aggiornato (foto scelte, set nuovi) e, se sì, l'app si ricarica da sola sulla stessa pagina.
+let hiddenAt = 0;
+function watchDataUpdates() {
+  document.addEventListener("visibilitychange", async () => {
+    if (document.hidden) { hiddenAt = Date.now(); return; }
+    if (!hiddenAt || Date.now() - hiddenAt < 5 * 60 * 1000 || !state.extra?.generated) return;
+    hiddenAt = 0;
+    try {
+      const raw = await (await fetch("data/extra.json", { cache: "no-cache" })).json();
+      if (!raw.generated || raw.generated === state.extra.generated) return;
+      // non mentre si guarda una foto grande o si usa la fotocamera; le note scritte si salvano prima
+      if (document.hidden || document.querySelector(".viewer") || location.hash === "#/scansiona") return;
+      flushPending();
+      location.reload();
+    } catch {}
+  });
 }
 
 // Codici a barre → set: preparati solo la prima volta che si scansiona.
@@ -989,17 +1008,10 @@ function openImage(src) {
   window.addEventListener("hashchange", () => el.remove(), { once: true });
 }
 
-async function fillGallery(s) {
-  const el = $("#gallery");
-  if (el.querySelector(".gallery")) setupGallery(el.querySelector(".gallery"));
-  const sig = (list) => list.map((x) => (x.img ? x.img + (x.crop ? "#ritaglio" : "") : "figs")).join(" ");
-  el.dataset.sig = sig(firstSlides(s));
-  const [details, figs] = await Promise.all([
-    loadDetails(s.setNum).catch(() => null),
-    s.figs ? loadMinifigs().catch(() => null) : null,
-  ]);
+// Le pagine della galleria di un set, in ordine (usata anche dalla prova su tutti i set).
+function gallerySlides(s, details, figs) {
   const slides = [];
-  const extra = details?.imgs || [];
+  const extra = [...(details?.imgs || [])];
   // L'elenco arriva già ordinato con la scatola per prima (Box1, boxprod, alt1...): il catalogo segna
   // in extra.json quale foto è la scatola, la stessa usata negli elenchi.
   const [boxUrl, , boxCrop] = boxPhoto(s.setNum) || [];
@@ -1024,6 +1036,19 @@ async function fillGallery(s) {
     return [imgUrl(img, figs.imgBase), qty > 1 ? `${qty} × ${name}` : name];
   }).filter(([src]) => src);
   if (faces.length) slides.push({ figs: faces });
+  return slides;
+}
+
+async function fillGallery(s) {
+  const el = $("#gallery");
+  if (el.querySelector(".gallery")) setupGallery(el.querySelector(".gallery"));
+  const sig = (list) => list.map((x) => (x.img ? x.img + (x.crop ? "#ritaglio" : "") : "figs")).join(" ");
+  el.dataset.sig = sig(firstSlides(s));
+  const [details, figs] = await Promise.all([
+    loadDetails(s.setNum).catch(() => null),
+    s.figs ? loadMinifigs().catch(() => null) : null,
+  ]);
+  const slides = gallerySlides(s, details, figs);
   // Si ridisegna solo se le foto sono cambiate rispetto a quelle già mostrate.
   if (!document.body.contains(el) || sig(slides) === el.dataset.sig) return;
   el.innerHTML = galleryHtml(slides);
@@ -2376,7 +2401,20 @@ function setupInstallHint() {
 
 async function start() {
   setupInstallHint();
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  if ("serviceWorker" in navigator) {
+    // sasha 1/11: dopo un aggiornamento la prima apertura usava ancora il programma vecchio, con i dati della volta prima
+    // (per esempio la scatola non ancora prima). Quando arriva la versione nuova l'app si ricarica una volta da sola.
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!hadController || reloaded || location.hash === "#/scansiona") return;
+      reloaded = true;
+      flushPending();
+      location.reload();
+    });
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+  watchDataUpdates();
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   try {
     await loadCatalog();

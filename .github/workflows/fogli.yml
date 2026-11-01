@@ -2,7 +2,7 @@ name: Fogli foto (temporaneo)
 on:
   push:
     branches: [claude/project-thread-2wvc00]
-    paths: [tmp-fogli/cfg.json, tmp-fogli/fogli.py, tmp-fogli/*.js, .github/workflows/fogli.yml]
+    paths: [tmp-fogli/cfg.json, tmp-fogli/fogli.py, tmp-fogli/*.js, tests/galleria.js, .github/workflows/fogli.yml]
 permissions:
   contents: write
 jobs:
@@ -10,10 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - run: pip install pillow
-      - run: mkdir -p _site && cp -r app/. _site/ && python scripts/build_catalog.py _site/data
+      - name: sito nuovo, sito di stamattina, sito pubblicato ora (programma vecchio + dati nuovi)
+        run: |
+          mkdir -p _site && cp -r app/. _site/ && python scripts/build_catalog.py _site/data
+          git worktree add ../vecchio a85a104 && (cd ../vecchio && mkdir -p _site && cp -r app/. _site/ && python scripts/build_catalog.py _site/data)
+          mkdir -p _oggi && git show origin/main:app/app.js > /dev/null && git archive origin/main app | tar -x -C /tmp && cp -r /tmp/app/. _oggi/ && cp -r _site/data _oggi/
       - run: python tmp-fogli/fogli.py
       - uses: actions/setup-node@v4
         with: {node-version: "22"}
@@ -21,8 +26,28 @@ jobs:
           npm install --no-save --no-audit --no-fund playwright@1.63.0
           npx playwright install --with-deps chromium
           OUT=$(python -c "import json;print(json.load(open('tmp-fogli/cfg.json'))['out'])")
-          node tmp-fogli/sito.js $OUT || true
-          [ -f tmp-fogli/prova.js ] && node tmp-fogli/prova.js _site $OUT || true
+          node tests/galleria.js _site $OUT/galleria.json || true
+          node tmp-fogli/aggiorna.js ../vecchio/_site _oggi $OUT prima-della-correzione || true
+          node tmp-fogli/aggiorna.js ../vecchio/_site _site $OUT con-la-correzione || true
+          python - <<'PY'
+          import json, urllib.request, urllib.parse, concurrent.futures as cf
+          ex = json.load(open("_site/data/extra.json")); b = ex["imgBase"]
+          urls = sorted({u for k, v in ex["sets"].items() if v.get("box") for u in ([b + "images/" + k + ".jpg", b + "small/" + k + ".jpg"] if v["box"] == 1 else v["box"][:2])})
+          def head(u):
+              for _ in range(3):
+                  try:
+                      r = urllib.request.urlopen(urllib.request.Request(b + urllib.parse.quote(u[len(b):]), method="HEAD", headers={"User-Agent": "Mozilla/5.0"}), timeout=30)
+                      return u, r.status
+                  except urllib.error.HTTPError as e:
+                      if e.code == 404: return u, 404
+                  except Exception: pass
+              return u, 0
+          with cf.ThreadPoolExecutor(32) as e: res = list(e.map(head, urls))
+          bad = [r for r in res if r[1] != 200]
+          out = json.load(open("tmp-fogli/cfg.json"))["out"]
+          json.dump({"n": len(urls), "bad": bad}, open(out + "/foto-scatola-esistono.json", "w"), indent=0)
+          print(len(urls), "foto scatola controllate,", len(bad), "non vanno")
+          PY
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
