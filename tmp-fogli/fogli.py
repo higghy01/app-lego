@@ -7,13 +7,13 @@ def get(p):
         try:
             req=urllib.request.Request(BASE+p,headers={"User-Agent":"Mozilla/5.0"})
             im=Image.open(io.BytesIO(urllib.request.urlopen(req,timeout=30).read())).convert("RGB")
-            im.thumbnail((200,200)); return im
+            im.thumbnail((300,300)); return im
         except Exception as e: err=e
     return None
 paths=sorted({p for v in d["A"].values() for p in v}|{x[1] for x in d["B"]})
 with cf.ThreadPoolExecutor(16) as ex: ims=dict(zip(paths,ex.map(get,paths)))
 font=ImageFont.load_default(size=22)
-C,R,S=12,14,200
+C,R,S=8,10,300
 def sheet(cells,name):
     W=Image.new("RGB",(C*S,R*(S+26)),"white"); dr=ImageDraw.Draw(W)
     for n,(lab,p,bg) in enumerate(cells):
