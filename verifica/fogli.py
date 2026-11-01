@@ -9,6 +9,15 @@ OUT = ROOT / "verifica" / "out"
 OUT.mkdir(parents=True, exist_ok=True)
 BS = "https://images.brickset.com/sets/"
 rows = json.loads((ROOT / "verifica/lista.json").read_text())
+import csv, gzip
+try:
+    req = urllib.request.Request("https://cdn.rebrickable.com/media/downloads/sets.csv.gz", headers={"User-Agent": "app-lego-catalog/1.0"})
+    RB = {r["set_num"]: r for r in csv.DictReader(io.TextIOWrapper(gzip.GzipFile(fileobj=io.BytesIO(urllib.request.urlopen(req, timeout=60).read())), encoding="utf-8"))}
+except Exception:
+    RB = {}
+for r in rows:
+    if r["set"] in RB:
+        r["name"], r["year"], r["rb"] = RB[r["set"]]["name"], RB[r["set"]]["year"], RB[r["set"]]["img_url"] or r["rb"]
 W, H, R = 300, 250, 110
 try:
     FONT = ImageFont.truetype("DejaVuSans-Bold.ttf", 15)
