@@ -1,0 +1,21 @@
+name: Fogli foto (temporaneo)
+on:
+  push:
+    branches: [claude/project-thread-3h1rwq]
+    paths: [tmp-fogli/cfg.json, tmp-fogli/fogli.py, tmp-fogli/schermate.js, .github/workflows/fogli.yml]
+permissions:
+  contents: write
+jobs:
+  fogli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install pillow
+      - run: mkdir -p _site && cp -r app/. _site/ && python scripts/build_catalog.py _site/data
+      - run: rm -rf tmp-fogli/out && python tmp-fogli/fogli.py
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add tmp-fogli/out && git commit -m "fogli" && git pull --rebase && git push
