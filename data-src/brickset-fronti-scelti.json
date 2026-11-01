@@ -868,7 +868,7 @@
 "3851-1": "images/3851-1.jpg",
 "3862-1": "images/3862-1.jpg",
 "3835-1": "images/3835-1.jpg",
-"3836-1": "images/3836-1.jpg",
+"3836-1": "AdditionalImages/3836-1/3836-0000-xx-13-1.jpg",
 "3837-1": "images/3837-1.jpg",
 "3838-1": "images/3838-1.jpg",
 "3839-1": "images/3839-1.jpg",
@@ -881,7 +881,7 @@
 "10177-1": "images/10177-1.jpg",
 "5525-1": "images/5525-1.jpg",
 "40118-1": "images/40118-1.jpg",
-"21050-1": "images/21050-1.jpg",
+"21050-1": "AdditionalImages/21050-1/21050_LA_Studio_2014_Box_02.jpg",
 "5007486-1": "images/5007486-1.jpg",
 "5007487-1": "images/5007487-1.jpg",
 "5006531-1": "images/5006531-1.jpg",
@@ -909,7 +909,11 @@
 "7687-1": "AdditionalImages/7687-1/7687-0000-xx-13-1.jpg",
 "5585-1": "AdditionalImages/5585-1/5585-0000-xx-13-1.jpg",
 "21204-1": "AdditionalImages/21204-1/21204_alt2.jpg",
-"40460-1": "AdditionalImages/40460-1/40460-lego-botanicals-roses-2026.jpg"
+"40460-1": "AdditionalImages/40460-1/40460-lego-botanicals-roses-2026.jpg",
+"10273-1": "AdditionalImages/10273-1/10273_alt1.jpg",
+"71410-9": "-",
+"8909-9": "-",
+"30067-1": "images/30067-1.jpg"
 },
 "crops": {
 "10412-1": [
@@ -1280,8 +1284,8 @@
 0.0,
 0.0,
 0.67,
-0.56,
-1.196
+0.53,
+1.264
 ]
 }
 }

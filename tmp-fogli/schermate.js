@@ -3,7 +3,7 @@
 const http = require("http"), fs = require("fs"), path = require("path");
 const { chromium, devices } = require("playwright");
 const dir = path.resolve(process.argv[2]), out = path.resolve(process.argv[3]);
-const SETS = ["21065-1", "72051-1", "42213-1", "40460-1", "3849-1", "5007486-1", "10179-1", "6743-1"];
+const SETS = ["10273-1", "40460-1", "30067-1"];
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png", ".woff2": "font/woff2", ".webmanifest": "application/manifest+json" };
 const srv = http.createServer((req, res) => {
   let f = path.join(dir, decodeURIComponent(req.url.split("?")[0]));
@@ -26,7 +26,7 @@ srv.listen(0, "127.0.0.1", async () => {
       first: document.querySelector(".gallery .slide img, .gallery .slide image")?.getAttribute("src") || document.querySelector(".gallery .slide image")?.getAttribute("href") }));
     await page.screenshot({ path: path.join(out, `scheda-${s}.png`) });
   }
-  for (const q of ["Sagrada", "Donkey Kong", "Bronco", "Roses", "Orient Bazaar"]) {
+  for (const q of ["Haunted House", "Roses"]) {
     await page.goto(base + "#/catalogo"); await page.waitForSelector("#q");
     await page.fill("#q", q); await page.waitForTimeout(5000);
     await page.screenshot({ path: path.join(out, `catalogo-${q.replace(/ /g, "")}.png`) });
