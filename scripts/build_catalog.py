@@ -29,6 +29,8 @@ BRICKSET_TEXTS = DATA_SRC / "brickset-testi.json"
 BRICKSET_PHOTOS = DATA_SRC / "brickset-foto.json"
 BRICKSET_FRONTS = DATA_SRC / "brickset-fronti.json"
 NO_MAIN_PHOTO = DATA_SRC / "brickset-senza-foto-principale.txt"
+# 1/11 (sasha: "trovare le altre foto"): fronte scelto guardando le foto, set per set, dove il nome non basta
+CHOSEN_FRONTS = DATA_SRC / "brickset-fronti-scelti.json"
 BRICKSET_IMG = "https://images.brickset.com/sets/"
 DETAIL_FILES = 64  # descrizioni e foto divise in tanti file piccoli: l'app apre solo quello del set
 
@@ -337,6 +339,9 @@ def build(out_dir, src=None):
     years = {r[0]: r[2] for r in sets}
     checked = json.loads(BRICKSET_FRONTS.read_text(encoding="utf-8"))["imgs"] if BRICKSET_FRONTS.exists() else {}
     n_front = [0, 0]
+    # Fronte scelto a occhio: vince sulle regole del nome (foto con nomi a caso, dove una su quattro e' il retro).
+    chosen = json.loads(CHOSEN_FRONTS.read_text(encoding="utf-8"))["sets"] if CHOSEN_FRONTS.exists() else {}
+    chosen_main = set()
     if BRICKSET_PHOTOS.exists():
         for set_num, info in json.loads(BRICKSET_PHOTOS.read_text(encoding="utf-8"))["sets"].items():
             if not info["imgs"]:
@@ -344,7 +349,12 @@ def build(out_dir, src=None):
             alt1_box = alt1_is_box(info["imgs"])
             # la scatola sempre per prima, senza doppioni
             imgs = unique_photos(sorted(info["imgs"], key=lambda i: photo_order(i, alt1_box)))
-            front = pick_front(imgs, years.get(set_num), checked)
+            pick = chosen.get(set_num)
+            if pick and pick.startswith("images/"):
+                chosen_main.add(set_num)  # la foto principale di Brickset e' il fronte: "box": 1 qui sotto
+                front = None
+            else:
+                front = next(((i, None) for i in imgs if i[0] == pick), None) or pick_front(imgs, years.get(set_num), checked)
             if front:
                 # il fronte della scatola per primo anche nella galleria, poi le altre foto
                 imgs = [front[0]] + [i for i in imgs if i is not front[0]]
@@ -371,7 +381,7 @@ def build(out_dir, src=None):
             continue
         # 31/10 (guardate di nuovo ~150 foto principali): fino al 2009 sono il fronte della scatola o della bustina;
         # dal 2010, nei set con altre foto, sono quasi sempre il set montato: li' niente.
-        if (years[set_num] or 0) >= 2010 and set_num in has_photos:
+        if (years[set_num] or 0) >= 2010 and set_num in has_photos and set_num not in chosen_main:
             continue
         info["box"] = 1
         n_main += 1
