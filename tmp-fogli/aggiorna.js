@@ -19,7 +19,8 @@ srv.listen(0, "127.0.0.1", async () => {
   const base = `http://127.0.0.1:${srv.address().port}/`;
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ ...devices["iPhone 13"] });
-  const first = (p) => p.evaluate(() => [...document.querySelectorAll(".gallery .slide")].map((e) => (e.dataset.full || "figs").split("/").pop()).slice(0, 2).join(" , "));
+  const first = async (p) => { for (let i = 0; i < 10; i++) { try { await p.waitForSelector(".gallery .slide", { timeout: 5000 }); return await first0(p); } catch { await p.waitForTimeout(1000); } } return "?"; };
+  const first0 = (p) => p.evaluate(() => [...document.querySelectorAll(".gallery .slide")].map((e) => (e.dataset.full || "figs").split("/").pop()).slice(0, 2).join(" , "));
   const rep = { nome, prima: {}, riapertura: {}, dopo8s: {}, ricaricata: false };
   let page = await ctx.newPage();
   await page.goto(base + "#/temi"); await page.waitForSelector(".tile", { timeout: 60000 });
