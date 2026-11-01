@@ -685,10 +685,14 @@ input[type=search] { box-shadow: var(--brick) var(--line); }
   .badge { font-size: 11px; padding-right: 7px; gap: 4px; white-space: nowrap; }
   #q::placeholder { font-size: 13px; }
 }
-/* Tante foto: al posto dei puntini schiacciati, "3 / 45" */
+/* Indicatore delle foto: sempre il numero, "3 / 18", uguale per tutti i set (sasha 1/11) */
 .dots { flex-wrap: wrap; }
 .dots span { flex: none; }
-.dots span.count { width: auto; height: auto; border-radius: 0; background: none; font: 600 13px var(--font-fun); color: #6b6459; }
+.dots span.count, .dots span.count.on {
+  width: auto; height: auto; border-radius: 999px; background: #f1ede6; transform: none;
+  padding: 3px 12px; font: 600 13px var(--font-fun); color: #6b6459; font-variant-numeric: tabular-nums;
+}
+.slide-crop { width: 100%; height: 100%; display: block; }
 
 /* ---------- Animazioni a tema LEGO ----------
    Solo movimento e trasparenza (fluide anche su iPhone). Con "Riduci movimento" attivo
