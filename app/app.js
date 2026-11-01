@@ -2257,6 +2257,11 @@ function keepView(route) {
   };
 }
 
+// Il blocco di un set con la scatola ritagliata ha un numero nuovo a ogni disegno (crop12, crop13...):
+// per capire se il blocco è cambiato davvero quel numero non conta. Prima, tornando da un set così,
+// la Collezione si ridisegnava sempre e le barre delle categorie ripartivano.
+const sameItem = (html) => html.replace(/crop\d+/g, "crop");
+
 // Rimette l'elenco messo da parte. Se mentre si guardava il set è cambiato qualcosa, si aggiorna solo quello.
 function restoreView() {
   const k = kept;
@@ -2272,7 +2277,7 @@ function restoreView() {
   // Set aperti il cui blocco adesso è diverso (stato, ❤️, voto, 📷 cambiati nella scheda).
   const changed = [...k.opened].filter(([num, html]) => {
     const s = state.catalog.bySetNum.get(num);
-    return s && item(s) !== html;
+    return s && sameItem(item(s)) !== html;
   }).map(([num]) => num);
   // Collezione e desideri: se ha cambiato lo stato di un set, l'elenco stesso può cambiare (e la festa
   // della categoria cresciuta deve partire): si ridisegna, ma senza animazione e nello stesso punto.
@@ -2335,7 +2340,7 @@ function route() {
     // Scansiona: solo quando mostra l'elenco dei set trovati (la fotocamera è già in pausa).
     if (KEEPABLE.test(prev) || (prev === "#/scansiona" && $("#scan-result .list"))) keepView(prev);
     const num = decodeURIComponent(arg), s = state.catalog.bySetNum.get(num);
-    if (kept && s && !kept.opened.has(num)) kept.opened.set(num, (kept.route === "#/desideri" ? wishItem : setItem)(s));
+    if (kept && s && !kept.opened.has(num)) kept.opened.set(num, sameItem((kept.route === "#/desideri" ? wishItem : setItem)(s)));
   } else if (kept && hash === kept.route && prev.startsWith("#/set/")) {
     restoreView();
     return;
