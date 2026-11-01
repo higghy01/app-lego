@@ -13,7 +13,7 @@ def get(p):
         except Exception: pass
 with cf.ThreadPoolExecutor(16) as ex: ims=list(ex.map(get,[p for s,p in L]))
 font=ImageFont.load_default(size=20)
-S=480; C=4; R=4; info={}
+S=900; C=2; R=2; info={}
 import os; os.makedirs("tmp-fogli/out",exist_ok=True)
 for sh in range(0,len(L),C*R):
     W=Image.new("RGB",(C*S,R*(S+24)),"white"); dr=ImageDraw.Draw(W)
