@@ -2401,19 +2401,9 @@ function setupInstallHint() {
 
 async function start() {
   setupInstallHint();
-  if ("serviceWorker" in navigator) {
-    // sasha 1/11: dopo un aggiornamento la prima apertura usava ancora il programma vecchio, con i dati della volta prima
-    // (per esempio la scatola non ancora prima). Quando arriva la versione nuova l'app si ricarica una volta da sola.
-    const hadController = !!navigator.serviceWorker.controller;
-    let reloaded = false;
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (!hadController || reloaded || location.hash === "#/scansiona") return;
-      reloaded = true;
-      flushPending();
-      location.reload();
-    });
-    navigator.serviceWorker.register("sw.js").catch(() => {});
-  }
+  // sasha 1/11: quando arriva una versione nuova è il service worker (sw.js, "activate") a ricaricare l'app aperta,
+  // così anche un telefono con la versione vecchia passa subito a programma e dati nuovi.
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   watchDataUpdates();
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   try {

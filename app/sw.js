@@ -21,16 +21,24 @@ self.addEventListener("install", (e) => {
 });
 
 self.addEventListener("activate", (e) => {
-  e.waitUntil(caches.keys().then(async (keys) => {
+  let hadOld = false;
+  const done = caches.keys().then(async (keys) => {
     const old = keys.filter((k) => k.startsWith("shell-") && k !== SHELL);
+    hadOld = old.length > 0;
     await Promise.all(old.map((k) => caches.delete(k)));
     await self.clients.claim();
-    // sasha 1/11: dopo un aggiornamento l'app aperta continuava con il programma e i dati di prima (per esempio la
-    // scatola non ancora prima in galleria). Se c'era una versione vecchia, le pagine aperte si ricaricano una volta.
-    if (!old.length) return;
-    const wins = await self.clients.matchAll({ type: "window" });
-    await Promise.all(wins.map((c) => (c.navigate ? c.navigate(c.url).catch(() => {}) : null)));
-  }));
+  });
+  e.waitUntil(done);
+  // sasha 1/11: dopo un aggiornamento l'app aperta continuava con il programma e i dati di prima (per esempio la
+  // scatola non ancora prima in galleria). Se c'era una versione vecchia, le pagine aperte si ricaricano una volta.
+  // Solo DOPO l'attivazione: durante l'attivazione la pagina ricaricata resterebbe ferma ad aspettare.
+  done.then(() => {
+    if (!hadOld) return;
+    setTimeout(async () => {
+      const wins = await self.clients.matchAll({ type: "window" });
+      for (const c of wins) if (c.navigate) c.navigate(c.url).catch(() => {});
+    }, 0);
+  });
 });
 
 self.addEventListener("fetch", (e) => {
