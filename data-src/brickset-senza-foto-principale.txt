@@ -1929,3 +1929,8 @@ VWKIT-1
 c7929-1
 c7930-1
 c7931-1
+# 1/11 verifica: la foto principale c'e' ma non e' la scatola (modello, contenuto, scatola inesistente)
+20012-1
+9656-1
+5524-1
+852750-1
