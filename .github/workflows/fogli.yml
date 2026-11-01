@@ -14,8 +14,8 @@ jobs:
         with: {python-version: "3.12"}
       - run: pip install pillow
       - run: mkdir -p _site && cp -r app/. _site/ && python scripts/build_catalog.py _site/data
-      - run: rm -rf tmp-fogli/out && python tmp-fogli/fogli.py
+      - run: python tmp-fogli/fogli.py
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          git add tmp-fogli/out && git commit -m "fogli" && git pull --rebase && git push
+          git add tmp-fogli/out* && git commit -m "fogli" && git pull --rebase && git push

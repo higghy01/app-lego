@@ -20,6 +20,12 @@ for s in cat["sets"]:
     if not only and not (Y0 <= y <= Y1): continue
     if not det.get(sn, {}).get("imgs"): continue
     x = xs.get(sn, {}); box = x.get("box")
+    if cfg.get("gallery"):
+        first = "images/" + sn + ".jpg" if box == 1 else (box[0] if box else None)
+        rows.append([sn, y, "M*" if box == 1 else "M", "images/" + sn + ".jpg", None, name])
+        for j, im in enumerate(det[sn]["imgs"]):
+            rows.append([sn, y, f"{j}" + ("*" if im[0] == first else ""), im[0], x.get("crop") if im[0] == first else None, im[0].rsplit("/", 1)[-1][:22]])
+        continue
     if not box: none.append(sn); continue
     if box == 1: url, k = "images/" + sn + ".jpg", "M"
     else:
@@ -54,7 +60,7 @@ for n0 in range(0, len(rows), C * R):
     for j, (r, im) in enumerate(zip(rows[n0:n0 + C * R], ims[n0:n0 + C * R])):
         x0, y0 = (j % C) * S, (j // C) * (S + 20)
         dr.rectangle([x0, y0, x0 + S - 1, y0 + 19], fill=["#ffd0d0", "#d0e0ff"][j % 2])
-        dr.text((x0 + 3, y0 + 1), f"{j} {r[0]} {r[1]} {r[2]}", fill="black", font=font)
+        dr.text((x0 + 3, y0 + 1), f"{r[0]} {r[2]} {r[5][:22] if cfg.get('gallery') else r[1]}" if cfg.get("gallery") else f"{j} {r[0]} {r[1]} {r[2]}", fill="black", font=font)
         if im: Wd.paste(im, (x0 + (S - im.width) // 2, y0 + 20 + (S - im.height) // 2))
         else: dr.text((x0 + 40, y0 + 100), "MANCA", fill="red", font=font); missing.append(r[0])
         dr.rectangle([x0, y0, x0 + S - 1, y0 + S + 19], outline="#888")
