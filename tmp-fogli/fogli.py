@@ -1,43 +1,38 @@
 import json, io, sys, concurrent.futures as cf, urllib.request
+sys.path.insert(0,"scripts")
+import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+import fronti_scatola as fs
 BASE="https://images.brickset.com/sets/"
-d=json.load(open("tmp-fogli/lista.json"))
+L=json.load(open("tmp-fogli/crop.json"))
 def get(p):
     for _ in range(3):
         try:
             req=urllib.request.Request(BASE+p,headers={"User-Agent":"Mozilla/5.0"})
-            im=Image.open(io.BytesIO(urllib.request.urlopen(req,timeout=30).read())).convert("RGB")
-            im.thumbnail((300,300)); return im
-        except Exception as e: err=e
-    return None
-paths=sorted({p for v in d["A"].values() for p in v}|{x[1] for x in d["B"]})
-with cf.ThreadPoolExecutor(16) as ex: ims=dict(zip(paths,ex.map(get,paths)))
-font=ImageFont.load_default(size=22)
-C,R,S=8,10,300
-def sheet(cells,name):
-    W=Image.new("RGB",(C*S,R*(S+26)),"white"); dr=ImageDraw.Draw(W)
-    for n,(lab,p,bg) in enumerate(cells):
-        x,y=(n%C)*S,(n//C)*(S+26)
-        dr.rectangle([x,y,x+S-1,y+S+25],fill=bg)
-        im=ims.get(p)
-        if im: W.paste(im,(x+(S-im.width)//2,y+26+(S-im.height)//2))
-        else: dr.text((x+40,y+100),"MANCA",fill="red",font=font)
-        dr.text((x+4,y+2),lab,fill="black",font=font)
-    W.save(f"tmp-fogli/out/{name}.jpg",quality=80)
+            return Image.open(io.BytesIO(urllib.request.urlopen(req,timeout=30).read())).convert("RGB")
+        except Exception: pass
+with cf.ThreadPoolExecutor(16) as ex: ims=list(ex.map(get,[p for s,p in L]))
+font=ImageFont.load_default(size=20)
+S=480; C=4; R=4; info={}
 import os; os.makedirs("tmp-fogli/out",exist_ok=True)
-idx={}
-cells=[];k=0;sh=0
-cols=["#ffd0d0","#d0e0ff","#d0ffd0","#fff0b0"]
-for i,(s,ps) in enumerate(d["A"].items()):
-    for j,p in enumerate(ps):
-        if len(cells)==C*R:
-            sheet(cells,f"a{sh:02d}"); sh+=1; cells=[]
-        cells.append((f"{s} {j}",p,cols[i%4]))
-        idx.setdefault(f"a{sh:02d}",[]).append(s) if j==0 else None
-sheet(cells,f"a{sh:02d}")
-cells=[];sh=0
-for s,p,c in d["B"]:
-    if len(cells)==C*R: sheet(cells,f"b{sh:02d}"); sh+=1; cells=[]
-    cells.append((s,p,"#ffd0d0" if c else "#eeeeee"))
-sheet(cells,f"b{sh:02d}")
-json.dump({"idx":idx,"missing":[p for p,v in ims.items() if v is None]},open("tmp-fogli/out/indice.json","w"))
+for sh in range(0,len(L),C*R):
+    W=Image.new("RGB",(C*S,R*(S+24)),"white"); dr=ImageDraw.Draw(W)
+    for n,((s,p),im) in enumerate(zip(L[sh:sh+C*R],ims[sh:sh+C*R])):
+        x0,y0=(n%C)*S,(n//C)*(S+24)
+        dr.text((x0+4,y0+2),s,fill="black",font=font)
+        if im is None: continue
+        a=np.asarray(im); rect=None
+        for ms in (0.9,0.8,0.7,0.6):
+            try: rect=fs.box_rect(a,None,ms)
+            except Exception: rect=None
+            if rect: break
+        info[s]={"p":p,"wh":im.size,"auto":rect}
+        t=im.copy(); t.thumbnail((S-10,S-10)); ox,oy=x0+5,y0+24
+        W.paste(t,(ox,oy)); tw,th=t.size
+        for k in range(1,10):
+            dr.line([(ox+tw*k/10,oy),(ox+tw*k/10,oy+th)],fill=(0,160,255),width=1)
+            dr.line([(ox,oy+th*k/10),(ox+tw,oy+th*k/10)],fill=(0,160,255),width=1)
+        if rect:
+            x,y,w,h=rect; dr.rectangle([ox+x*tw,oy+y*th,ox+(x+w)*tw,oy+(y+h)*th],outline="red",width=3)
+    W.save(f"tmp-fogli/out/c{sh//(C*R):02d}.jpg",quality=85)
+json.dump(info,open("tmp-fogli/out/crop-info.json","w"))
