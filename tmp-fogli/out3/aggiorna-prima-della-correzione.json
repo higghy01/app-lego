@@ -1,0 +1,17 @@
+{
+ "nome": "prima-della-correzione",
+ "prima": {
+  "60481-1": "60481-1.jpg , 60481_Box5_v29_en-gb.jpeg.jpg",
+  "80113-1": "80113_alt1.jpg , 80113-1.jpg",
+  "21065-1": "21065-1.jpg , 21065_00947.jpg"
+ },
+ "riapertura": {
+  "60481-1": "60481-1.jpg , 60481_Box5_v29_en-gb.jpeg.jpg"
+ },
+ "dopo8s": {
+  "60481-1": "60481-1.jpg , 60481_Box5_v29_en-gb.jpeg.jpg",
+  "80113-1": "80113_alt1.jpg , 80113-1.jpg",
+  "21065-1": "21065-1.jpg , 21065_00947.jpg"
+ },
+ "ricaricata": false
+}
