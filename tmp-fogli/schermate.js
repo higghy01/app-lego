@@ -3,7 +3,7 @@
 const http = require("http"), fs = require("fs"), path = require("path");
 const { chromium, devices } = require("playwright");
 const dir = path.resolve(process.argv[2]), out = path.resolve(process.argv[3]);
-const SETS = ["21065-1", "72051-1", "60407-1", "42672-1", "10412-1", "71823-1", "76923-1", "41595-1", "75192-1", "42213-1"];
+const SETS = ["21065-1", "72051-1", "42213-1", "60407-1", "71801-1", "71428-1", "10412-1", "41595-1", "75192-1", "76923-1"];
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png", ".woff2": "font/woff2", ".webmanifest": "application/manifest+json" };
 const srv = http.createServer((req, res) => {
   let f = path.join(dir, decodeURIComponent(req.url.split("?")[0]));
