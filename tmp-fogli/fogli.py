@@ -1,5 +1,5 @@
 # Temporaneo (verifica 1/11): fogli con la PRIMA foto che l'app mostra (elenchi e scheda) per i set 2000-2022 con galleria.
-import json, io, os, sys, concurrent.futures as cf, urllib.request
+import json, io, os, sys, urllib.parse, concurrent.futures as cf, urllib.request
 from PIL import Image, ImageDraw, ImageFont
 sys.path.insert(0, "scripts")
 import build_catalog as bc
@@ -36,7 +36,7 @@ for s in cat["sets"]:
 def get(p):
     for _ in range(3):
         try:
-            req = urllib.request.Request(base + p, headers={"User-Agent": "Mozilla/5.0"})
+            req = urllib.request.Request(base + urllib.parse.quote(p), headers={"User-Agent": "Mozilla/5.0"})
             return Image.open(io.BytesIO(urllib.request.urlopen(req, timeout=30).read())).convert("RGB")
         except Exception:
             pass
