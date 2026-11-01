@@ -15,8 +15,8 @@ jobs:
           python-version: "3.12"
       - run: |
           pip install --quiet pillow numpy scipy opencv-python-headless
-          for f in prova/*.py; do python "$f"; done
+          python prova/fogli_scelta.py
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          git add prova/out
+          git add prova/out prova/scelta
           git commit -m "prova: risultati" && git push
