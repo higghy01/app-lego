@@ -689,7 +689,7 @@ function cropImg(src, crop, cls, s) {
 let cropId = 0;
 function cropSvgInner(src, [x, y, w, h, ratio], onerror, attrs) {
   const W = 1000, H = Math.round(1000 * w / (h * ratio)); // proporzioni della foto intera
-  const r = [x * W, y * H, w * W, h * H].map((v) => Math.round(v));
+  const r = [x * W, y * H, w * W, h * H].map((v) => Math.round(v * 100) / 100); // niente arrotondamento: sennò ai bordi una riga del set
   const id = "crop" + ++cropId;
   return `viewBox="${r.join(" ")}" preserveAspectRatio="xMidYMid meet" ${attrs}>`
     + `<clipPath id="${id}"><rect x="${r[0]}" y="${r[1]}" width="${r[2]}" height="${r[3]}"/></clipPath>`
@@ -2281,6 +2281,7 @@ function restoreView() {
     else if (arg) renderCollectionCategory(Number(arg));
     else renderCollection();
     calmView();
+    skipAnimations(false);
     return;
   }
   // Dati Brickset arrivati mentre era nella scheda (foto delle scatole, Nuovo): come farebbe la pagina da sola.
@@ -2296,6 +2297,20 @@ function restoreView() {
       const li = a.closest("li");
       if (li) li.outerHTML = item(s);
     });
+  }
+  skipAnimations(true);
+}
+
+// Rimettendo la pagina, il telefono farebbe ripartire le animazioni (mattoncino del titolo, scheda in basso
+// che saltella, barre delle categorie che ricrescono, filtro scelto): si portano subito alla fine, così si torna
+// esattamente com'era. withView=false: solo titolo e schede in basso (l'elenco ridisegnato ha già le sue regole).
+function skipAnimations(withView) {
+  const roots = [$("header.top"), $(".tabs"), withView && $("#view")].filter(Boolean);
+  for (const a of document.getAnimations()) {
+    const t = a.effect?.target;
+    if (!t || !roots.some((r) => r.contains(t))) continue;
+    if (a.effect.getComputedTiming().iterations === Infinity) continue; // es. mattoncino che aspetta i dati
+    try { a.finish(); } catch {}
   }
 }
 
@@ -2317,7 +2332,8 @@ function route() {
   currentRoute = hash;
   if (page === "set" && arg) {
     // Da un elenco a un set: l'elenco si mette da parte. Da un set a un altro set (correlati) resta da parte.
-    if (KEEPABLE.test(prev)) keepView(prev);
+    // Scansiona: solo quando mostra l'elenco dei set trovati (la fotocamera è già in pausa).
+    if (KEEPABLE.test(prev) || (prev === "#/scansiona" && $("#scan-result .list"))) keepView(prev);
     const num = decodeURIComponent(arg), s = state.catalog.bySetNum.get(num);
     if (kept && s && !kept.opened.has(num)) kept.opened.set(num, (kept.route === "#/desideri" ? wishItem : setItem)(s));
   } else if (kept && hash === kept.route && prev.startsWith("#/set/")) {
