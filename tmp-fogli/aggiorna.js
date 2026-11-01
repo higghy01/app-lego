@@ -1,45 +1,37 @@
-// Temporaneo: telefono con la versione VECCHIA già installata, poi si pubblica quella nuova e si riapre l'app.
-// node tmp-fogli/aggiorna.js VECCHIA NUOVA OUT NOME
 "use strict";
 const http = require("http"), fs = require("fs"), path = require("path");
 const { chromium, devices } = require("playwright");
-let root = path.resolve(process.argv[2]);
-const nuova = path.resolve(process.argv[3]), out = path.resolve(process.argv[4]), nome = process.argv[5];
+let root = path.resolve(process.argv[2]); const nuova = path.resolve(process.argv[3]);
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png", ".woff2": "font/woff2", ".webmanifest": "application/manifest+json" };
 const srv = http.createServer((req, res) => {
   let f = path.join(root, decodeURIComponent(req.url.split("?")[0]));
   if (fs.existsSync(f) && fs.statSync(f).isDirectory()) f = path.join(f, "index.html");
   if (!fs.existsSync(f)) { res.writeHead(404); res.end(); return; }
-  // come GitHub Pages: il browser può tenere la copia per 10 minuti
   res.writeHead(200, { "Content-Type": TYPES[path.extname(f)] || "application/octet-stream", "Cache-Control": "max-age=600" });
   fs.createReadStream(f).pipe(res);
 });
-const SETS = ["60481-1", "80113-1", "21065-1"];
+const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
 srv.listen(0, "127.0.0.1", async () => {
   const base = `http://127.0.0.1:${srv.address().port}/`;
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ ...devices["iPhone 13"] });
-  const first = async (p) => { for (let i = 0; i < 10; i++) { try { await p.waitForSelector(".gallery .slide", { timeout: 5000 }); return await first0(p); } catch { await p.waitForTimeout(1000); } } return "?"; };
-  const first0 = (p) => p.evaluate(() => [...document.querySelectorAll(".gallery .slide")].map((e) => (e.dataset.full || "figs").split("/").pop()).slice(0, 2).join(" , "));
-  const rep = { nome, prima: {}, riapertura: {}, dopo8s: {}, ricaricata: false };
+
+  const t0 = Date.now(); let navs = 0;
+  const slides = (p) => p.evaluate(() => [...document.querySelectorAll(".gallery .slide")].map((e) => (e.dataset.full || "").split("/").pop()).join(","));
   let page = await ctx.newPage();
-  await page.goto(base + "#/temi"); await page.waitForSelector(".tile", { timeout: 60000 });
-  await page.waitForFunction(() => navigator.serviceWorker.controller, null, { timeout: 30000 }).catch(() => {});
-  await page.waitForTimeout(3000);
-  for (const s of SETS) { await page.goto(base + "#/set/" + s); await page.waitForTimeout(2500); rep.prima[s] = await first(page); }
+  await page.goto(base + "#/temi"); await page.waitForTimeout(2000);
+  await page.waitForFunction(() => navigator.serviceWorker.controller, null, { timeout: 30000 });
+  await page.goto(base + "#/set/60481-1"); await page.waitForTimeout(2000);
+  console.log("vecchia:", await slides(page));
   await page.close();
-  root = nuova; // si pubblica la versione nuova
+  root = nuova;
   page = await ctx.newPage();
-  await page.addInitScript(() => { window.__loads = (Number(sessionStorage.getItem("loads") || 0) + 1); sessionStorage.setItem("loads", window.__loads); });
-  await page.goto(base + "#/set/" + SETS[0]); await page.waitForTimeout(1200);
-  rep.riapertura[SETS[0]] = await first(page);
-  await page.waitForTimeout(12000);
-  rep.dopo8s[SETS[0]] = await first(page);
-  rep.ricaricata = await page.evaluate(() => window.__loads > 1);
-  await page.screenshot({ path: path.join(out, `aggiorna-${nome}-${SETS[0]}.png`) });
-  for (const s of SETS.slice(1)) { await page.goto(base + "#/set/" + s); await page.waitForTimeout(2500); rep.dopo8s[s] = await first(page);
-    await page.screenshot({ path: path.join(out, `aggiorna-${nome}-${s}.png`) }); }
-  fs.writeFileSync(path.join(out, `aggiorna-${nome}.json`), JSON.stringify(rep, null, 1));
-  console.log(JSON.stringify(rep));
+  page.on("framenavigated", (f) => { if (f === page.mainFrame()) { navs++; console.log("navigazione", navs, ((Date.now() - t0) / 1000).toFixed(1) + "s"); } });
+  page.on("console", (m) => console.log("console:", m.text()));
+  await page.goto(base + "#/set/60481-1");
+  for (let i = 0; i < 20; i++) { await page.waitForTimeout(1500); try { console.log((i * 1.5 + 1.5) + "s:", await slides(page)); } catch (e) { console.log("ricarica in corso"); } }
+  console.log("navigazioni totali", navs);
+  for (const s of ["80113-1", "21065-1"]) { await page.goto(base + "#/set/" + s); await page.waitForTimeout(3000); console.log(s, await slides(page)); await page.screenshot({ path: process.argv[4] + "/aggiorna-" + s + ".png" }); }
+  await page.goto(base + "#/set/60481-1"); await page.waitForTimeout(3000); await page.screenshot({ path: process.argv[4] + "/aggiorna-60481-1.png" });
   await browser.close(); srv.close();
 });

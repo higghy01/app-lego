@@ -27,7 +27,7 @@ jobs:
           npx playwright install --with-deps chromium
           OUT=$(python -c "import json;print(json.load(open('tmp-fogli/cfg.json'))['out'])")
 
-          node tmp-fogli/aggiorna.js ../vecchio/_site _site $OUT con-la-correzione || true
+          mkdir -p $OUT; node tmp-fogli/aggiorna.js ../vecchio/_site _site $OUT 2>&1 | tee $OUT/aggiorna.txt || true
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
