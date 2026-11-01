@@ -4,7 +4,7 @@ const fs = require("fs"), path = require("path");
 const { chromium, devices } = require("playwright");
 const out = path.resolve(process.argv[2]);
 const SETS = (process.argv[3] || "60481-1,80113-1,21065-1").split(",");
-const BASE = "https://higghy01.github.io/app-lego/";
+const BASE = process.argv[4] || "https://higghy01.github.io/app-lego/";
 (async () => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ ...devices["iPhone 13"] });
@@ -21,8 +21,8 @@ const BASE = "https://higghy01.github.io/app-lego/";
     await page.waitForTimeout(5000);
     report[s] = await page.evaluate(() => ({ count: document.querySelector(".gallery .count")?.textContent || "",
       slides: [...document.querySelectorAll(".gallery .slide")].map((e) => e.dataset.full || "figs") }));
-    await page.screenshot({ path: path.join(out, `sito-${s}.png`) });
+    await page.screenshot({ path: path.join(out, `${process.argv[5] || "sito"}-${s}.png`) });
   }
-  fs.writeFileSync(path.join(out, "sito.json"), JSON.stringify(report, null, 1));
+  fs.writeFileSync(path.join(out, (process.argv[5] || "sito") + ".json"), JSON.stringify(report, null, 1));
   await browser.close();
 })();

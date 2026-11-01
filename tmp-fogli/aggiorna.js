@@ -32,7 +32,7 @@ srv.listen(0, "127.0.0.1", async () => {
   await page.addInitScript(() => { window.__loads = (Number(sessionStorage.getItem("loads") || 0) + 1); sessionStorage.setItem("loads", window.__loads); });
   await page.goto(base + "#/set/" + SETS[0]); await page.waitForTimeout(1200);
   rep.riapertura[SETS[0]] = await first(page);
-  await page.waitForTimeout(8000);
+  await page.waitForTimeout(12000);
   rep.dopo8s[SETS[0]] = await first(page);
   rep.ricaricata = await page.evaluate(() => window.__loads > 1);
   await page.screenshot({ path: path.join(out, `aggiorna-${nome}-${SETS[0]}.png`) });

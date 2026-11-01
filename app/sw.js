@@ -21,9 +21,16 @@ self.addEventListener("install", (e) => {
 });
 
 self.addEventListener("activate", (e) => {
-  e.waitUntil(caches.keys().then((keys) => Promise.all(
-    keys.filter((k) => k.startsWith("shell-") && k !== SHELL).map((k) => caches.delete(k))
-  )).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then(async (keys) => {
+    const old = keys.filter((k) => k.startsWith("shell-") && k !== SHELL);
+    await Promise.all(old.map((k) => caches.delete(k)));
+    await self.clients.claim();
+    // sasha 1/11: dopo un aggiornamento l'app aperta continuava con il programma e i dati di prima (per esempio la
+    // scatola non ancora prima in galleria). Se c'era una versione vecchia, le pagine aperte si ricaricano una volta.
+    if (!old.length) return;
+    const wins = await self.clients.matchAll({ type: "window" });
+    await Promise.all(wins.map((c) => (c.navigate ? c.navigate(c.url).catch(() => {}) : null)));
+  }));
 });
 
 self.addEventListener("fetch", (e) => {

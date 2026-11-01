@@ -27,6 +27,8 @@ jobs:
           npx playwright install --with-deps chromium
           OUT=$(python -c "import json;print(json.load(open('tmp-fogli/cfg.json'))['out'])")
           node tests/galleria.js _site $OUT/galleria.json || true
+          (cd _site && python -m http.server 8123 >/dev/null 2>&1 &) ; sleep 2
+          node tmp-fogli/sito.js $OUT "$(cat tmp-fogli/schermate.txt)" http://127.0.0.1:8123/ nuova || true
           node tmp-fogli/aggiorna.js ../vecchio/_site _oggi $OUT prima-della-correzione || true
           node tmp-fogli/aggiorna.js ../vecchio/_site _site $OUT con-la-correzione || true
           python - <<'PY'
@@ -36,7 +38,7 @@ jobs:
           def head(u):
               for _ in range(3):
                   try:
-                      r = urllib.request.urlopen(urllib.request.Request(b + urllib.parse.quote(u[len(b):]), method="HEAD", headers={"User-Agent": "Mozilla/5.0"}), timeout=30)
+                      r = urllib.request.urlopen(urllib.request.Request(b + urllib.parse.quote(u[len(b):]), headers={"User-Agent": "Mozilla/5.0", "Range": "bytes=0-511"}), timeout=30)
                       return u, r.status
                   except urllib.error.HTTPError as e:
                       if e.code == 404: return u, 404
