@@ -1,5 +1,5 @@
 // Fa funzionare l'app anche senza internet.
-const VERSION = "v47";
+const VERSION = "v48";
 const SHELL = "shell-" + VERSION;
 const DATA = "data";
 const IMAGES = "images";
@@ -14,15 +14,31 @@ const SHELL_FILES = ["./", "index.html", "style.css", "app.js", "manifest.webman
 self.addEventListener("install", (e) => {
   // Alla prima apertura salva subito app e catalogo, così funziona anche offline.
   e.waitUntil(Promise.all([
-    caches.open(SHELL).then((c) => c.addAll(SHELL_FILES)),
-    caches.open(DATA).then((c) => c.addAll(DATA_FILES)).catch(() => {}),
+    // no-cache: mai la copia vecchia del browser, sennò la nuova versione partirebbe con i dati di prima
+    caches.open(SHELL).then((c) => c.addAll(SHELL_FILES.map((f) => new Request(f, { cache: "no-cache" })))),
+    caches.open(DATA).then((c) => c.addAll(DATA_FILES.map((f) => new Request(f, { cache: "no-cache" })))).catch(() => {}),
   ]).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (e) => {
-  e.waitUntil(caches.keys().then((keys) => Promise.all(
-    keys.filter((k) => k.startsWith("shell-") && k !== SHELL).map((k) => caches.delete(k))
-  )).then(() => self.clients.claim()));
+  let hadOld = false;
+  const done = caches.keys().then(async (keys) => {
+    const old = keys.filter((k) => k.startsWith("shell-") && k !== SHELL);
+    hadOld = old.length > 0;
+    await Promise.all(old.map((k) => caches.delete(k)));
+    await self.clients.claim();
+  });
+  e.waitUntil(done);
+  // sasha 1/11: dopo un aggiornamento l'app aperta continuava con il programma e i dati di prima (per esempio la
+  // scatola non ancora prima in galleria). Se c'era una versione vecchia, le pagine aperte si ricaricano una volta.
+  // Solo DOPO l'attivazione: durante l'attivazione la pagina ricaricata resterebbe ferma ad aspettare.
+  done.then(() => {
+    if (!hadOld) return;
+    setTimeout(async () => {
+      const wins = await self.clients.matchAll({ type: "window" });
+      for (const c of wins) if (c.navigate) c.navigate(c.url).catch(() => {});
+    }, 0);
+  });
 });
 
 self.addEventListener("fetch", (e) => {
@@ -30,7 +46,7 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin === location.origin && url.pathname.includes("/data/")) {
-    e.respondWith(staleWhileRevalidate(req));
+    e.respondWith(freshData(req));
   } else if (url.origin === location.origin) {
     e.respondWith(networkFirst(req));
   } else if (url.hostname.endsWith("rebrickable.com")) {
@@ -41,21 +57,31 @@ self.addEventListener("fetch", (e) => {
   }
 });
 
-// Catalogo: si apre subito con la copia salvata e intanto si scarica quella nuova.
-async function staleWhileRevalidate(req) {
+// Catalogo e foto scelte: sempre quelli nuovi se c'è internet (sasha 1/11: prima il telefono mostrava i dati
+// della volta prima, per esempio la scatola non ancora messa per prima). Si chiede al sito se sono cambiati
+// (no-cache: se non sono cambiati la risposta è piccolissima); senza internet, o se il sito non risponde
+// entro 3 secondi, si usa la copia salvata, e quella nuova si salva appena arriva.
+async function freshData(req) {
   const cache = await caches.open(DATA);
   const cached = await cache.match(req, { ignoreSearch: true });
-  const fresh = fetch(req).then((res) => {
+  const network = fetch(req.url, { cache: "no-cache" }).then((res) => {
     if (res.ok) cache.put(req, res.clone());
     return res;
-  }).catch(() => cached);
-  return cached || fresh;
+  });
+  if (!cached) return network;
+  const timeout = new Promise((resolve) => setTimeout(() => resolve(null), NETWORK_TIMEOUT));
+  try {
+    const res = await Promise.race([network, timeout]);
+    return res && res.ok ? res : cached;
+  } catch (err) {
+    return cached;
+  }
 }
 
 async function networkFirst(req) {
   const cache = await caches.open(SHELL);
   const cached = await cache.match(req, { ignoreSearch: true });
-  const network = fetch(req).then((res) => {
+  const network = fetch(req.url, { cache: "no-cache" }).then((res) => {
     if (res.ok) cache.put(req, res.clone());
     return res;
   });

@@ -66,6 +66,8 @@ jobs:
           npm install --no-save --no-audit --no-fund playwright@1.63.0
           npx playwright install --with-deps chromium
           node tests/prova.js _site
+          # sasha 1/11: su TUTTI i set la prima foto della galleria deve essere la scatola degli elenchi
+          node tests/galleria.js _site
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
