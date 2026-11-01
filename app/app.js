@@ -680,11 +680,20 @@ function listImg(s, cls = "thumb") {
 
 // Solo la scatola da una foto "scatola + set montato": un disegno SVG che mostra solo quel rettangolo
 // (la foto è sempre quella vera di Brickset, ritagliata). crop = [x, y, larghezza, altezza, rapporto] in frazioni.
-function cropImg(src, [x, y, w, h, ratio], cls, s) {
+function cropImg(src, crop, cls, s) {
+  return `<svg class="${cls} crop-img" ${cropSvgInner(src, crop, "cropFallback(this)", `role="img" aria-label="" data-set="${esc(s.setNum)}"`)}</svg>`;
+}
+
+// Il ritaglio della scatola dentro la foto "scatola + set montato". Il riquadro in cui sta la foto non ha
+// sempre la forma della scatola: senza il clipPath ai lati si vedrebbe un pezzo del set montato accanto.
+let cropId = 0;
+function cropSvgInner(src, [x, y, w, h, ratio], onerror, attrs) {
   const W = 1000, H = Math.round(1000 * w / (h * ratio)); // proporzioni della foto intera
-  const vb = [x * W, y * H, w * W, h * H].map((v) => Math.round(v)).join(" ");
-  return `<svg class="${cls} crop-img" viewBox="${vb}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="" data-set="${esc(s.setNum)}">`
-    + `<image href="${esc(src)}" width="${W}" height="${H}" preserveAspectRatio="none" onerror="cropFallback(this)"/></svg>`;
+  const r = [x * W, y * H, w * W, h * H].map((v) => Math.round(v));
+  const id = "crop" + ++cropId;
+  return `viewBox="${r.join(" ")}" preserveAspectRatio="xMidYMid meet" ${attrs}>`
+    + `<clipPath id="${id}"><rect x="${r[0]}" y="${r[1]}" width="${r[2]}" height="${r[3]}"/></clipPath>`
+    + `<image href="${esc(src)}" width="${W}" height="${H}" preserveAspectRatio="none" clip-path="url(#${id})" onerror="${onerror}"/>`;
 }
 
 // La foto della scatola non si carica (es. senza internet): si prova la foto di Rebrickable, come gli altri set.
@@ -903,13 +912,15 @@ function drawThemeHead(id) {
 }
 
 // ---------- Galleria foto della scheda ----------
-// Prima la scatola (Brickset), poi la foto di Rebrickable, poi le altre foto Brickset
+// Prima il fronte della scatola (Brickset), poi la foto di Rebrickable, poi le altre foto Brickset
 // e per ultima una pagina con i personaggi (minifigure di Rebrickable).
+// sasha 1/11: il fronte della scatola SEMPRE per primo, anche qui. Se la foto è "scatola + set montato"
+// (boxprod), la prima pagina mostra solo la scatola ritagliata, come negli elenchi; la foto intera resta più avanti.
 
 function firstSlides(s) {
   const box = boxPhoto(s.setNum);
   const slides = [];
-  if (box) slides.push({ img: box[0] });
+  if (box) slides.push({ img: box[0], crop: box[2] });
   if (s.img) slides.push({ img: s.img, thumb: thumbUrl(s.img) });
   return slides;
 }
@@ -918,16 +929,20 @@ function galleryHtml(slides) {
   if (!slides.length) return `<div class="noimg">Immagine non disponibile</div>`;
   const one = (sl, i) => sl.figs
     ? `<div class="slide figs-slide"><div class="figs-grid">${sl.figs.map(([src, name]) => `<img src="${esc(src)}" alt="${esc(name)}" loading="lazy" onerror="figError(this)">`).join("")}</div><div class="slide-label">I personaggi del set</div></div>`
-    : `<button type="button" class="slide" data-full="${esc(sl.img)}" aria-label="Foto ${i + 1}, apri grande"><img src="${esc(sl.img)}" alt="" ${i ? 'loading="lazy"' : ""} onerror="slideError(this)"></button>`;
+    : `<button type="button" class="slide" data-full="${esc(sl.img)}" aria-label="Foto ${i + 1}, apri grande">${sl.crop ? cropSlide(sl.img, sl.crop) : `<img src="${esc(sl.img)}" alt="" ${i ? 'loading="lazy"' : ""} onerror="slideError(this)">`}</button>`;
   return `<div class="gallery"><div class="slides">${slides.map(one).join("")}</div>
     ${slides.length > 1 ? `<div class="dots">${dotsHtml(slides.length, 0)}</div>` : ""}</div>`;
 }
 
-// Fino a 12 foto i puntini; con di più (es. 45) i puntini non ci stanno e si scrive "1 / 45".
+// Solo la scatola di una foto "scatola + set montato" (stesso ritaglio degli elenchi).
+function cropSlide(src, crop) {
+  return `<svg class="slide-crop" ${cropSvgInner(src, crop, "slideError(this)", 'role="img" aria-label="Fronte della scatola"')}</svg>`;
+}
+
+// sasha 1/11: prima a volte c'erano i puntini e a volte i numeri. Ora sempre il numero, uguale per tutti i set: "1 / 18".
 function dotsHtml(n, i) {
   if (n < 2) return "";
-  if (n > 12) return `<span class="count">${i + 1} / ${n}</span>`;
-  return Array.from({ length: n }, (_, j) => `<span class="${i === j ? "on" : ""}"></span>`).join("");
+  return `<span class="count">${i + 1} / ${n}</span>`;
 }
 
 // Una foto che non si carica (es. senza internet) sparisce; se non resta niente, il riquadro grigio.
@@ -956,8 +971,7 @@ function setupGallery(gallery) {
     dots.innerHTML = dotsHtml(n, 0);
     slides.onscroll = () => {
       const i = Math.round(slides.scrollLeft / slides.clientWidth);
-      if (n > 12) dots.firstChild.textContent = `${i + 1} / ${n}`;
-      else [...dots.children].forEach((d, j) => d.classList.toggle("on", i === j));
+      dots.firstChild.textContent = `${i + 1} / ${n}`;
     };
   }
   slides.onclick = (ev) => {
@@ -978,7 +992,7 @@ function openImage(src) {
 async function fillGallery(s) {
   const el = $("#gallery");
   if (el.querySelector(".gallery")) setupGallery(el.querySelector(".gallery"));
-  const sig = (list) => list.map((x) => x.img || "figs").join(" ");
+  const sig = (list) => list.map((x) => (x.img ? x.img + (x.crop ? "#ritaglio" : "") : "figs")).join(" ");
   el.dataset.sig = sig(firstSlides(s));
   const [details, figs] = await Promise.all([
     loadDetails(s.setNum).catch(() => null),
@@ -988,14 +1002,19 @@ async function fillGallery(s) {
   const extra = details?.imgs || [];
   // L'elenco arriva già ordinato con la scatola per prima (Box1, boxprod, alt1...): il catalogo segna
   // in extra.json quale foto è la scatola, la stessa usata negli elenchi.
-  const boxUrl = boxPhoto(s.setNum)?.[0];
+  const [boxUrl, , boxCrop] = boxPhoto(s.setNum) || [];
   // Se extra.json non è ancora arrivato si riconosce la scatola dal nome della foto.
   // (solo il fronte: Box1, Box3, Box4, "box", "-xx-23-"; mai il retro Box5/Box6 o la scatola col set montato)
   const isBox = (u) => {
     const name = u.split("/").pop();
     return !/back|hinten|rear|inside|innen|open|lifestyle/i.test(name) && /(?:^|[_ -]|\d)box(1|3|4|front)?(?=[_. (-]|v\d|$)|-xx-23-/i.test(name);
   };
-  if (boxUrl) slides.push(extra[0]?.img === boxUrl ? extra.shift() : { img: boxUrl });
+  // Scatola ritagliata: la foto intera (scatola + set montato) resta tra le altre, subito dopo.
+  if (boxUrl && boxCrop) slides.push({ img: boxUrl, crop: boxCrop });
+  else if (boxUrl) {
+    const at = extra.findIndex((x) => x.img === boxUrl);
+    slides.push(at >= 0 ? extra.splice(at, 1)[0] : { img: boxUrl });
+  }
   else if (extra[0] && !state.extra && isBox(extra[0].img)) slides.push(extra.shift());
   if (s.img) slides.push({ img: s.img });
   slides.push(...extra);
@@ -2220,6 +2239,66 @@ document.addEventListener("visibilitychange", () => {
   else if (location.hash === "#/scansiona" && $("#scan-box") && !$("#scan-box").hidden) startScan();
 });
 
+// ---------- Tornare all'elenco senza ricaricarlo ----------
+// sasha 1/11: aprendo un set e tornando indietro l'elenco sembrava ricaricarsi da capo.
+// Ora, quando si apre un set da un elenco, la pagina dell'elenco viene messa da parte così com'è
+// (stessi filtri, stessi set già caricati, stessa posizione) e al ritorno si rimette, senza animazioni.
+let kept = null; // { route, frag, scroll, header, tab, extra, opened: Map(set -> blocco com'era quando è stato aperto) }
+const KEEPABLE = /^#\/(temi$|tema\/|catalogo|collezione|desideri$)/;
+
+function keepView(route) {
+  const view = $("#view");
+  const scroll = window.scrollY; // prima di togliere l'elenco: dopo la pagina è corta e torna in cima
+  const frag = document.createDocumentFragment();
+  while (view.firstChild) frag.appendChild(view.firstChild);
+  kept = {
+    route, frag, scroll, header: $("header.top").innerHTML,
+    tab: $(".tabs a.active")?.dataset.tab || "", extra: !!state.extra, opened: new Map(),
+  };
+}
+
+// Rimette l'elenco messo da parte. Se mentre si guardava il set è cambiato qualcosa, si aggiorna solo quello.
+function restoreView() {
+  const k = kept;
+  kept = null;
+  const view = $("#view");
+  calmView();
+  view.replaceChildren(k.frag);
+  $("header.top").innerHTML = k.header;
+  setTab(k.tab);
+  layoutAll(k.scroll);
+  const [, page, arg] = k.route.split("/");
+  const item = page === "desideri" ? wishItem : setItem;
+  // Set aperti il cui blocco adesso è diverso (stato, ❤️, voto, 📷 cambiati nella scheda).
+  const changed = [...k.opened].filter(([num, html]) => {
+    const s = state.catalog.bySetNum.get(num);
+    return s && item(s) !== html;
+  }).map(([num]) => num);
+  // Collezione e desideri: se ha cambiato lo stato di un set, l'elenco stesso può cambiare (e la festa
+  // della categoria cresciuta deve partire): si ridisegna, ma senza animazione e nello stesso punto.
+  if (changed.length && (page === "collezione" || page === "desideri")) {
+    if (page === "desideri") renderWishlist(true);
+    else if (arg) renderCollectionCategory(Number(arg));
+    else renderCollection();
+    calmView();
+    return;
+  }
+  // Dati Brickset arrivati mentre era nella scheda (foto delle scatole, Nuovo): come farebbe la pagina da sola.
+  if (k.extra !== !!state.extra) {
+    if (page === "catalogo") renderResults(false, true);
+    else if (page === "tema") drawThemeList(Number(arg), false, true);
+    else if (page === "temi" || page === undefined) { state.themesScroll = k.scroll; renderThemes(); }
+  }
+  // Negli altri elenchi si rifanno solo i blocchi dei set cambiati.
+  for (const num of changed) {
+    const s = state.catalog.bySetNum.get(num);
+    view.querySelectorAll(`a.item[href="#/set/${CSS.escape(encodeURIComponent(num))}"]`).forEach((a) => {
+      const li = a.closest("li");
+      if (li) li.outerHTML = item(s);
+    });
+  }
+}
+
 function route() {
   flushPending();
   stopScan();
@@ -2233,9 +2312,21 @@ function route() {
   if (currentRoute === "#/collezione") state.collectionScroll = window.scrollY;
   const backFromCat = currentRoute.startsWith("#/collezione/") && hash === "#/collezione";
   state.cameFromApp = currentRoute !== "";
-  currentRoute = hash;
-  animateView();
   const [, page, arg] = hash.split("/");
+  const prev = currentRoute || "#/temi";
+  currentRoute = hash;
+  if (page === "set" && arg) {
+    // Da un elenco a un set: l'elenco si mette da parte. Da un set a un altro set (correlati) resta da parte.
+    if (KEEPABLE.test(prev)) keepView(prev);
+    const num = decodeURIComponent(arg), s = state.catalog.bySetNum.get(num);
+    if (kept && s && !kept.opened.has(num)) kept.opened.set(num, (kept.route === "#/desideri" ? wishItem : setItem)(s));
+  } else if (kept && hash === kept.route && prev.startsWith("#/set/")) {
+    restoreView();
+    return;
+  } else {
+    kept = null;
+  }
+  animateView();
   if (page === "set" && arg) renderDetail(decodeURIComponent(arg));
   else if (page === "collezione" && arg) renderCollectionCategory(Number(arg));
   else if (page === "collezione") renderCollection();
